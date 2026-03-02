@@ -5,19 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c1b3fb0e-b49e-4435-b1c4-bf9e4e1a86d1" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node_modules/.package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/_metadata.json" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.vite/deps/_metadata.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node_modules/caniuse-lite/data/features/css-overflow-anchor.js" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/caniuse-lite/data/features/css-overflow-anchor.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node_modules/caniuse-lite/data/features/customizable-select.js" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/caniuse-lite/data/features/customizable-select.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node_modules/caniuse-lite/data/features/link-icon-svg.js" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/caniuse-lite/data/features/link-icon-svg.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node_modules/caniuse-lite/data/features/webtransport.js" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/caniuse-lite/data/features/webtransport.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node_modules/caniuse-lite/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/caniuse-lite/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/public/favicon.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/public/logo.png" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/config.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/config.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -53,9 +41,10 @@
   &quot;keyToString&quot;: {
     &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;demo&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
@@ -93,7 +82,7 @@
       <option name="presentableId" value="Default" />
       <updated>1766693066602</updated>
       <workItem from="1772280094977" duration="1235000" />
-      <workItem from="1772475966712" duration="1002000" />
+      <workItem from="1772475966712" duration="1830000" />
     </task>
     <servers />
   </component>
