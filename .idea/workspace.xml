@@ -44,6 +44,7 @@
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/shaxo/OneDrive/Desktop/E-KASSAM Project/e-kassam-front/ekassam-login&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
@@ -54,6 +55,11 @@
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\shaxo\OneDrive\Desktop\E-KASSAM Project\e-kassam-front\ekassam-login" />
+    </key>
+  </component>
   <component name="RunManager">
     <configuration name="dev" type="js.build_tools.npm" nameIsGenerated="true">
       <package-json value="$PROJECT_DIR$/package.json" />
@@ -82,6 +88,7 @@
       <updated>1766693066602</updated>
       <workItem from="1772280094977" duration="1235000" />
       <workItem from="1772475966712" duration="2694000" />
+      <workItem from="1772522252508" duration="1825000" />
     </task>
     <task id="LOCAL-00001" summary="Merge remote-tracking branch 'origin/main'">
       <option name="closed" value="true" />
