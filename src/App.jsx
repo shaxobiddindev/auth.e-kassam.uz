@@ -98,14 +98,14 @@ export default function App() {
           // /auth/me ishlamasa login form dan foydalanamiz
         }
         const roles    = meData.roles || r1.data?.roles || [];
-        const mainRole = roles[0]?.type || roles[0]?.name || String(roles[0] || "");
+        const mainRoleStr = roles.map(r => r?.type || r?.name || String(r || "")).filter(Boolean).join(",");
         redirectWithToken({
           type:         "user",
           accessToken:  r1.data.accessToken,
           refreshToken: r1.data.refreshToken,
           username:     meData.username || r1.data?.username || form.username.trim(),
           fullName:     meData.fullName || r1.data?.fullName || form.username.trim(),
-          role:         mainRole,
+          role:         mainRoleStr,
           shopCode:     form.shopCode.trim(),
         });
       }
