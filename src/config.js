@@ -1,14 +1,18 @@
 // ╔══════════════════════════════════════════════════════════════╗
 // ║           BARCHA URL VA SOZLAMALAR SHU YERDA               ║
-// ║   Deployment uchun faqat shu faylni o'zgartiring           ║
+// ║   Deployment uchun faqat DOMAIN ni o'zgartiring            ║
 // ╚══════════════════════════════════════════════════════════════╝
 
-// ── Server URL ─────────────────────────────────────────────────
-export const API_BASE  = "https://api.e-kassam.uz/api";
 
-// ── Frontend URL lar ───────────────────────────────────────────
-export const APP_URL   = "https://app.e-kassam.uz";
-export const ADMIN_URL = "https://admin.e-kassam.uz";
+// *** PRODUCTION
+export const API_BASE  = `https://api.e-kassam.uz/api`;
+export const APP_URL   = `https://app.e-kassam.uz`;
+export const ADMIN_URL = `https://admin.e-kassam.uz`;
+
+// *** LOCALHOST
+// export const API_BASE  = `http://localhost:8080/api`;
+// export const APP_URL   = `http://localhost:5173`;
+// export const ADMIN_URL = `http://localhost:5174`;
 
 // ── Logo (public/ papkasiga logo.png qo'ying) ──────────────────
 export const LOGO_URL  = "/logo.png";
