@@ -42,6 +42,10 @@ function redirectWithToken({ type, accessToken, refreshToken, username, fullName
     username: username || "",
     fullName: fullName || username || "",
     role:     role || "",
+    // Refresh token shu deviceId ga bog'langan. localStorage origin ga xos,
+    // shuning uchun uni maqsad domenga o'zimiz uzatamiz — aks holda u yerda
+    // boshqa id yaraladi va refresh "boshqa qurilma" deb rad etiladi.
+    deviceId: getDeviceId(),
   });
   if (shopCode) params.set("shopCode", shopCode);
 
@@ -70,10 +74,11 @@ export default function App() {
     setLoading(true);
     try {
       if (tab === "admin") {
-        const r1 = await post("/auth/admin/login", {
-          username: form.username.trim(),
-          password: form.password,
-        });
+        const r1 = await post(
+          "/auth/admin/login",
+          { username: form.username.trim(), password: form.password },
+          { "X-Device-Id": getDeviceId() }
+        );
         const me = await get("/auth/admin/me", r1.data.accessToken);
         redirectWithToken({
           type:         "admin",
