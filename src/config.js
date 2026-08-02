@@ -4,15 +4,16 @@
 // ╚══════════════════════════════════════════════════════════════╝
 
 
-// *** PRODUCTION
-export const API_BASE  = `https://api.e-kassam.uz/api`;
-export const APP_URL   = `https://app.e-kassam.uz`;
-export const ADMIN_URL = `https://admin.e-kassam.uz`;
+// `npm run dev` → LOCALHOST, `npm run build` → PRODUCTION (avtomatik).
+// Boshqa qiymat kerak bo'lsa .env faylida VITE_* ni bering.
+const PROD = import.meta.env.PROD;
 
-// *** LOCALHOST
-// export const API_BASE  = `http://localhost:8080/api`;
-// export const APP_URL   = `http://localhost:5173`;
-// export const ADMIN_URL = `http://localhost:5174`;
+export const API_BASE  = import.meta.env.VITE_API_BASE
+  ?? (PROD ? `https://api.e-kassam.uz/api` : `http://localhost:8080/api`);
+export const APP_URL   = import.meta.env.VITE_APP_URL
+  ?? (PROD ? `https://app.e-kassam.uz`     : `http://localhost:5173`);
+export const ADMIN_URL = import.meta.env.VITE_ADMIN_URL
+  ?? (PROD ? `https://admin.e-kassam.uz`   : `http://localhost:5174`);
 
 // ── Logo (public/ papkasiga logo.png qo'ying) ──────────────────
 export const LOGO_URL  = "/logo.png";
