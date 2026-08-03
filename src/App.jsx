@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { API_BASE, APP_URL, ADMIN_URL, getDeviceId, LOGO_URL } from "./config";
+import { API_BASE, APP_URL, ADMIN_URL, getDeviceId, LOGO_URL, LOGO_DARK_URL } from "./config";
+import ThemeSelect from "./components/ek/ThemeSelect";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Kirish ekrani — 05-AUTH.md
@@ -152,6 +153,10 @@ export default function App() {
 
   return (
     <div className="auth">
+      {/* Ko'rinish rejimi — kirish ekranida ham bor: kassir smenani kechqurun
+          boshlaydi va yorug' ekran charchatadi. */}
+      <div className="auth__theme"><ThemeSelect /></div>
+
       {/* ══ CHAP: forma ══ */}
       <div className="auth__form-side">
         {/* Muvaffaqiyatli kirishda forma scale(.98)+opacity 0 → yo'naltirish.
@@ -163,7 +168,10 @@ export default function App() {
             ? { opacity: 0, transform: "scale(.98)", transition: "opacity var(--dur-base) var(--ease-in), transform var(--dur-base) var(--ease-in)" }
             : undefined}
         >
-          <img src={LOGO_URL} alt="e-Kassam" className="auth__logo ek-in-fade"
+          {/* Logotip temaga qarab almashadi — so'z belgisi to'q siyoh rangida */}
+          <img src={LOGO_URL} alt="e-Kassam" className="auth__logo logo--light ek-in-fade"
+               onError={(e) => { e.target.style.display = "none"; }} />
+          <img src={LOGO_DARK_URL} alt="" aria-hidden="true" className="auth__logo logo--dark ek-in-fade"
                onError={(e) => { e.target.style.display = "none"; }} />
 
           <h1 className="auth__title ek-in-up" style={{ animationDelay: "60ms" }}>Xush kelibsiz</h1>
