@@ -232,4 +232,9 @@ img.logo--dark { display: none; }
 [data-theme="dark"] .auth__points i { color: var(--ek-blue-200); }
 
 /* ── Tema tanlagichi — chap yuqori burchakda ────────────────────────────── */
-.auth__theme { position: absolute; top: 16px; right: 16px; z-index: 2; }
+/* Til + tema yonma-yon. `flex-wrap` — 360px ekranda ikkinchisi pastga tushadi
+   va gorizontal toshish bo'lmaydi. */
+.auth__theme {
+  position: absolute; top: 16px; right: 16px; z-index: 2;
+  display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;
+}

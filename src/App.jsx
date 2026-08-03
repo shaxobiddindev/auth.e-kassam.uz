@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { API_BASE, APP_URL, ADMIN_URL, getDeviceId, LOGO_URL, LOGO_DARK_URL } from "./config";
+import { t, getLang, useT } from "./lib/ek-i18n";
 import ThemeSelect from "./components/ek/ThemeSelect";
+import LangSelect from "./components/ek/LangSelect";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Kirish ekrani — 05-AUTH.md
@@ -14,13 +16,16 @@ import ThemeSelect from "./components/ek/ThemeSelect";
      · Autofill ishlaydi (autocomplete="username" / "current-password")
    ══════════════════════════════════════════════════════════════════════════ */
 
-/** Xato hech qachon uzr so'ramaydi va hech qachon noaniq bo'lmaydi. */
+/**
+ * Xato hech qachon uzr so'ramaydi va hech qachon noaniq bo'lmaydi.
+ * `t()` — modul funksiyasi, React'dan tashqarida ham joriy tilni oladi.
+ */
 function humanError(status, message) {
-  if (status === 401 || status === 403) return "Login yoki parol noto'g'ri";
-  if (status === 423) return "Hisob 15 daqiqaga bloklandi. Egangizga murojaat qiling.";
-  if (status === 429) return "Juda ko'p urinish. Bir necha daqiqadan keyin qayta urining.";
-  if (status === 0)   return "Serverga ulanib bo'lmadi. Internetni tekshiring.";
-  return message || "Kirishda xatolik yuz berdi";
+  if (status === 401 || status === 403) return t("login.errBadCredentials");
+  if (status === 423) return t("login.errLocked");
+  if (status === 429) return t("login.errTooMany");
+  if (status === 0)   return t("login.errNetwork");
+  return message || t("login.errGeneric");
 }
 
 async function post(path, body, extraHeaders = {}) {
@@ -29,7 +34,12 @@ async function post(path, body, extraHeaders = {}) {
     res = await fetch(`${API_BASE}${path}`, {
       method: "POST",
       credentials: "include",           // refresh token httpOnly cookie'da keladi
-      headers: { "Content-Type": "application/json", ...extraHeaders },
+      headers: {
+        "Content-Type": "application/json",
+        // Backend xato xabarlari ham foydalanuvchi tilida kelsin
+        "Accept-Language": getLang(),
+        ...extraHeaders,
+      },
       body: JSON.stringify(body),
     });
   } catch (_) {
@@ -48,20 +58,27 @@ async function get(path, token) {
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      "Accept-Language": getLang(),
       "X-Device-Id": getDeviceId(),
     },
   });
   const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json.message || `Xatolik: ${res.status}`);
+  if (!res.ok) throw new Error(json.message || `${t("common.error")}: ${res.status}`);
   return json;
 }
 
 // ── Logout bo'lganda localStorage tozalash va URL tozalash ──
 const _lp = new URLSearchParams(window.location.search);
 if (_lp.get("logged_out") === "1") {
-  const dev = localStorage.getItem("ek_deviceId");   // qurilma identifikatori saqlanadi
+  // Qurilma identifikatori VA til tanlovi saqlanadi: ikkalasi ham sessiyaga
+  // emas, brauzerga tegishli. Tilni o'chirsak, chiqqan foydalanuvchi kirish
+  // ekranini yana o'zbekchada ko'rardi.
+  const dev  = localStorage.getItem("ek_deviceId");
+  const lang = localStorage.getItem("ek_lang");
   localStorage.clear();
-  if (dev) localStorage.setItem("ek_deviceId", dev);
+  if (dev)  localStorage.setItem("ek_deviceId", dev);
+  if (lang) localStorage.setItem("ek_lang", lang);
+  // `lang` parametri URL da qolsa `initLang` uni o'qib bo'lgan — endi tozalasa bo'ladi
   window.history.replaceState({}, "", window.location.pathname);
 }
 
@@ -79,10 +96,19 @@ function redirectWithToken({ type, accessToken, refreshToken, username, fullName
   });
   if (shopCode) params.set("shopCode", shopCode);
   const dest = type === "admin" ? ADMIN_URL : APP_URL;
-  window.location.replace(`${dest}?auth=${encodeURIComponent(params.toString())}`);
+
+  // Til `auth` blobi ICHIDA emas, ALOHIDA parametr sifatida uzatiladi:
+  // maqsad ilovada `initLang()` uni `location.search` dan o'qiydi va bu
+  // React ko'tarilishidan oldin bo'ladi. Blob ichida bo'lsa birinchi kadr
+  // noto'g'ri tilda chizilardi. deviceId bilan bir xil sabab — originlar
+  // turli, localStorage bo'linmaydi (09-CHETLANISHLAR.md §6).
+  window.location.replace(
+    `${dest}?auth=${encodeURIComponent(params.toString())}&lang=${getLang()}`
+  );
 }
 
 export default function App() {
+  const { t } = useT();
   const [tab, setTab]           = useState("user");
   const [form, setForm]         = useState({ shopCode: "", username: "", password: "" });
   const [loading, setLoading]   = useState(false);
@@ -104,9 +130,9 @@ export default function App() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (tab === "user" && !form.shopCode.trim()) return fail("Do'kon kodini kiriting");
-    if (!form.username.trim())                   return fail("Foydalanuvchi nomini kiriting");
-    if (!form.password)                          return fail("Parolni kiriting");
+    if (tab === "user" && !form.shopCode.trim()) return fail(t("login.needShopCode"));
+    if (!form.username.trim())                   return fail(t("login.needUsername"));
+    if (!form.password)                          return fail(t("login.needPassword"));
 
     setLoading(true);
     try {
@@ -153,9 +179,13 @@ export default function App() {
 
   return (
     <div className="auth">
-      {/* Ko'rinish rejimi — kirish ekranida ham bor: kassir smenani kechqurun
-          boshlaydi va yorug' ekran charchatadi. */}
-      <div className="auth__theme"><ThemeSelect /></div>
+      {/* Ko'rinish rejimi va til — kirish ekranida ham bor: kassir smenani
+          kechqurun boshlaydi va yorug' ekran charchatadi; til esa kirishdan
+          OLDIN tanlanishi kerak, aks holda forma tushunarsiz bo'lishi mumkin. */}
+      <div className="auth__theme">
+        <LangSelect />
+        <ThemeSelect />
+      </div>
 
       {/* ══ CHAP: forma ══ */}
       <div className="auth__form-side">
@@ -174,15 +204,15 @@ export default function App() {
           <img src={LOGO_DARK_URL} alt="" aria-hidden="true" className="auth__logo logo--dark ek-in-fade"
                onError={(e) => { e.target.style.display = "none"; }} />
 
-          <h1 className="auth__title ek-in-up" style={{ animationDelay: "60ms" }}>Xush kelibsiz</h1>
+          <h1 className="auth__title ek-in-up" style={{ animationDelay: "60ms" }}>{t("login.welcome")}</h1>
           <p className="auth__sub ek-in-up" style={{ animationDelay: "120ms" }}>
-            Do'koningizni boshqarish uchun tizimga kiring
+            {t("login.subtitle")}
           </p>
 
-          <div className="auth__seg" role="tablist" aria-label="Kirish turi">
+          <div className="auth__seg" role="tablist" aria-label={t("login.tabType")}>
             {[
-              { k: "user",  icon: "fa-store",         label: "Do'kon xodimi" },
-              { k: "admin", icon: "fa-shield-halved", label: "Admin" },
+              { k: "user",  icon: "fa-store",         label: t("login.tabUser") },
+              { k: "admin", icon: "fa-shield-halved", label: t("login.tabAdmin") },
             ].map(({ k, icon, label }) => (
               <button
                 key={k} type="button" role="tab"
@@ -197,13 +227,13 @@ export default function App() {
           {isAdmin && (
             <div className="auth__note">
               <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
-              Faqat tizim administratorlari uchun
+              {t("login.adminNote")}
             </div>
           )}
 
           {!isAdmin && (
             <div className="auth__field">
-              <label className="auth__label" htmlFor="shopCode">Do'kon kodi</label>
+              <label className="auth__label" htmlFor="shopCode">{t("login.shopCode")}</label>
               <input
                 id="shopCode" ref={firstFieldRef}
                 className="auth__input"
@@ -216,7 +246,7 @@ export default function App() {
           )}
 
           <div className="auth__field">
-            <label className="auth__label" htmlFor="username">Login</label>
+            <label className="auth__label" htmlFor="username">{t("login.login")}</label>
             <input
               id="username"
               ref={isAdmin ? firstFieldRef : undefined}
@@ -229,7 +259,7 @@ export default function App() {
           </div>
 
           <div className="auth__field">
-            <label className="auth__label" htmlFor="password">Parol</label>
+            <label className="auth__label" htmlFor="password">{t("login.password")}</label>
             <div className="auth__input-wrap">
               <input
                 id="password"
@@ -242,7 +272,7 @@ export default function App() {
               />
               <button type="button" className="auth__eye"
                 onClick={() => setShowPass((p) => !p)}
-                aria-label={showPass ? "Parolni yashirish" : "Parolni ko'rsatish"}
+                aria-label={showPass ? t("login.hidePassword") : t("login.showPassword")}
                 aria-pressed={showPass}>
                 <i className={`fa-solid ${showPass ? "fa-eye-slash" : "fa-eye"}`} aria-hidden="true" />
               </button>
@@ -265,14 +295,15 @@ export default function App() {
           <button type="submit" disabled={loading}
             className={`auth__submit ${isAdmin ? "auth__submit--admin" : ""}`}>
             {loading
-              ? <><span className="ek-spinner" aria-hidden="true" /> Tekshirilmoqda…</>
+              ? <><span className="ek-spinner" aria-hidden="true" /> {t("common.checking")}</>
               : <><i className={`fa-solid ${isAdmin ? "fa-shield-halved" : "fa-right-to-bracket"}`} aria-hidden="true" />
-                  {isAdmin ? "Admin sifatida kirish" : "Kirish"}</>}
+                  {isAdmin ? t("login.submitAdmin") : t("login.submit")}</>}
           </button>
 
           <p className="auth__foot">
-            Kirganingizdan so'ng{" "}
-            <strong>{isAdmin ? "admin.e-kassam.uz" : "app.e-kassam.uz"}</strong> ga yo'naltirilasiz
+            {t("login.redirectNote", {
+              host: isAdmin ? "admin.e-kassam.uz" : "app.e-kassam.uz",
+            })}
           </p>
         </form>
       </div>
@@ -281,26 +312,24 @@ export default function App() {
       <aside className="auth__brand-side" aria-hidden="true">
         <div className="auth__brand-inner">
           <div className="auth__brand-eyebrow">e-Kassam</div>
-          <div className="auth__brand-title">
-            Do'koningiz bugun qancha ishladi —<br />bir qarashda ko'ring
-          </div>
+          <div className="auth__brand-title">{t("login.brandTitle")}</div>
 
           <div className="auth__receipt ek-tear ek-in-up" style={{ animationDelay: "180ms" }}>
             <div className="auth__receipt-head">
-              <span>Bugun · 14:32</span>
-              <span>Kassa №1</span>
+              <span>{t("login.receiptToday")} · 14:32</span>
+              <span>{t("login.receiptRegister")}</span>
             </div>
-            <div className="auth__receipt-label">Bugungi tushum</div>
+            <div className="auth__receipt-label">{t("login.receiptLabel")}</div>
             <div className="auth__receipt-total">4 218 000</div>
-            <div className="auth__receipt-row"><span>Sotuvlar</span><b>128</b></div>
-            <div className="auth__receipt-row"><span>O'rtacha chek</span><b>32 950</b></div>
-            <div className="auth__receipt-row"><span>Naqd / Karta</span><b>61% / 39%</b></div>
+            <div className="auth__receipt-row"><span>{t("login.receiptSales")}</span><b>128</b></div>
+            <div className="auth__receipt-row"><span>{t("login.receiptAvg")}</span><b>32 950</b></div>
+            <div className="auth__receipt-row"><span>{t("login.receiptSplit")}</span><b>61% / 39%</b></div>
           </div>
 
           <ul className="auth__points">
-            <li><i className="fa-solid fa-wifi" aria-hidden="true" />Internet uzilsa savdo to'xtamaydi — sotuvlar qurilmada saqlanadi</li>
-            <li><i className="fa-solid fa-boxes-stacked" aria-hidden="true" />Qoldiq tugashidan oldin bildirishnoma keladi</li>
-            <li><i className="fa-solid fa-lock" aria-hidden="true" />Har bir amal jurnalga yoziladi</li>
+            <li><i className="fa-solid fa-wifi" aria-hidden="true" />{t("login.point1")}</li>
+            <li><i className="fa-solid fa-boxes-stacked" aria-hidden="true" />{t("login.point2")}</li>
+            <li><i className="fa-solid fa-lock" aria-hidden="true" />{t("login.point3")}</li>
           </ul>
         </div>
       </aside>
