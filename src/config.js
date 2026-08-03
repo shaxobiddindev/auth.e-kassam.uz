@@ -15,8 +15,13 @@ export const APP_URL   = import.meta.env.VITE_APP_URL
 export const ADMIN_URL = import.meta.env.VITE_ADMIN_URL
   ?? (PROD ? `https://admin.e-kassam.uz`   : `http://localhost:5174`);
 
-// ── Logo (public/ papkasiga logo.png qo'ying) ──────────────────
-export const LOGO_URL  = "/logo.png";
+// ── Brend fayllari ────────────────────────────────────────────
+// SVG — rastr emas: har qanday ekranda aniq va ~20 barobar yengil.
+// Fayllar packages/brand/logo/ dan sync-tokens.ps1 orqali public/ ga tushadi.
+export const LOGO_URL      = "/lockup-light.svg";   // yorug' fonda (oq plastinka)
+export const LOGO_DARK_URL = "/lockup-dark.svg";    // qorong'i panelda
+export const MARK_URL      = "/mark-color.svg";     // yolg'iz belgi, 32px+
+export const MARK_SMALL_URL= "/mark-small.svg";     // 32px dan kichik
 
 // ── localStorage kalitlari ─────────────────────────────────────
 export const K = {
