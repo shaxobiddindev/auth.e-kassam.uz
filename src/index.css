@@ -153,7 +153,7 @@ img.logo--dark { display: none; }
 .auth__foot {
   margin-top: 22px; padding-top: 16px;
   border-top: 1px solid var(--border-subtle);
-  font-size: var(--fs-xs); color: var(--fg-tertiary); text-align: center;
+  font-size: var(--fs-xs); color: var(--fg-secondary); text-align: center;
 }
 
 /* ── O'ng: brend paneli ───────────────────────────────────────────────────
@@ -208,7 +208,7 @@ img.logo--dark { display: none; }
   display: flex; justify-content: space-between; align-items: baseline;
   padding-bottom: 10px; margin-bottom: 10px;
   border-bottom: 1px dashed var(--border-strong);
-  font-size: var(--fs-2xs); color: var(--fg-tertiary);
+  font-size: var(--fs-2xs); color: var(--fg-secondary);
 }
 .auth__receipt-label {
   font-size: var(--fs-2xs); font-weight: 600; letter-spacing: .08em;
