@@ -1,7 +1,200 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+/* Dizayn tizimi — tartib muhim: avval tokenlar, keyin motion, keyin ilova. */
+@import url('./styles/ekassam-tokens.css');
+@import url('./styles/ek-motion.css');
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css');
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:'Nunito',sans-serif; }
-input:focus { border-color:#017dca !important; background:white !important; box-shadow:0 0 0 3px rgba(1,125,202,.12) !important; outline:none; }
-@keyframes slideUp { from { opacity:0; transform:translateY(28px) } to { opacity:1; transform:none } }
-@keyframes spin    { to { transform:rotate(360deg) } }
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  background: var(--bg-canvas);
+  color: var(--fg-primary);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mono, .ek-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   05-AUTH.md — kirish ekrani
+
+   "Eng kichik ilova, lekin birinchi taassurot. Sekin yoki chalkash bo'lsa —
+   qolgani ahamiyatsiz."
+
+   Ikki panel: chapda forma, o'ngda ko'k panel jonli ko'rinishdagi demo bilan.
+   Mobilda o'ng panel yo'qoladi, forma markazda.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.auth {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 900px) {
+  .auth { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+
+/* ── Chap: forma ──────────────────────────────────────────────────────────── */
+.auth__form-side {
+  display: flex; align-items: center; justify-content: center;
+  padding: 32px 24px;
+  background: var(--bg-surface);
+}
+.auth__form { width: 100%; max-width: 380px; }
+
+.auth__logo { height: 40px; object-fit: contain; display: block; margin-bottom: 28px; }
+
+.auth__title {
+  font-family: var(--font-display);
+  font-size: 1.65rem; font-weight: 800; letter-spacing: -.03em;
+  margin-bottom: 4px;
+}
+.auth__sub { font-size: var(--fs-md); color: var(--fg-secondary); margin-bottom: 26px; }
+
+/* Segmented — do'kon xodimi / admin */
+.auth__seg {
+  display: flex; gap: 4px; padding: 4px; margin-bottom: 20px;
+  background: var(--bg-sunken); border-radius: var(--r-lg);
+}
+.auth__seg button {
+  flex: 1; min-height: var(--hit-md);
+  border: 0; border-radius: var(--r-md);
+  background: transparent; color: var(--fg-secondary);
+  font-family: var(--font-sans); font-size: var(--fs-sm); font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.auth__seg button[aria-selected="true"] {
+  background: var(--bg-surface); color: var(--fg-primary); box-shadow: var(--sh-sm);
+}
+
+.auth__field { margin-bottom: 16px; }
+.auth__label {
+  display: block; margin-bottom: 6px;
+  font-size: var(--fs-xs); font-weight: 600; color: var(--fg-secondary);
+}
+.auth__input-wrap { position: relative; }
+.auth__input {
+  width: 100%; min-height: var(--hit-lg);
+  padding: 12px 14px;
+  border: 1.5px solid var(--border-subtle); border-radius: var(--r-md);
+  background: var(--bg-sunken); color: var(--fg-primary);
+  font-family: var(--font-sans); font-size: var(--fs-lg);
+  outline: none;
+  transition: border-color var(--dur-fast) var(--ease-out),
+              background var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
+}
+.auth__input:focus { border-color: var(--border-brand); background: var(--bg-surface); box-shadow: var(--ring-brand); }
+.auth__input[aria-invalid="true"] { border-color: var(--border-danger); }
+.auth__input--pass { padding-right: 48px; font-family: var(--font-mono); letter-spacing: .04em; }
+
+.auth__eye {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  width: var(--hit-min); height: var(--hit-min);
+  display: grid; place-items: center;
+  border: 0; background: none; cursor: pointer;
+  color: var(--fg-tertiary); font-size: 15px;
+  border-radius: var(--r-md);
+}
+.auth__eye:hover { color: var(--fg-primary); }
+
+/* Xato: aniq matn, uzr so'ramaydi, noaniq emas. 6px silkinish — BIR MARTA. */
+.auth__error {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 11px 13px; margin-bottom: 14px;
+  background: var(--bg-danger-subtle); border: 1px solid var(--border-danger);
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm); font-weight: 500; color: var(--fg-danger);
+}
+
+/* Yuborilayotganda tugma o'lchami O'ZGARMAYDI (aks holda layout sakraydi) */
+.auth__submit {
+  width: 100%; min-height: var(--hit-lg);
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  border: 0; border-radius: var(--r-md);
+  background: var(--bg-brand); color: var(--fg-on-brand);
+  box-shadow: var(--sh-brand);
+  font-family: var(--font-sans); font-size: var(--fs-lg); font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), transform var(--dur-instant) var(--ease-out);
+}
+.auth__submit:hover:not(:disabled) { background: var(--bg-brand-hover); }
+.auth__submit:active:not(:disabled) { transform: scale(.98); }
+.auth__submit:disabled { opacity: .72; cursor: progress; }
+.auth__submit--admin { background: var(--ek-ink-900); box-shadow: var(--sh-md); }
+.auth__submit--admin:hover:not(:disabled) { background: var(--ek-ink-950); }
+
+.auth__note {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 13px; margin-bottom: 16px;
+  background: var(--bg-warning-subtle); border: 1px solid var(--border-warning);
+  border-radius: var(--r-md);
+  font-size: var(--fs-xs); font-weight: 500; color: var(--fg-warning);
+}
+
+.auth__foot {
+  margin-top: 22px; padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--fs-xs); color: var(--fg-tertiary); text-align: center;
+}
+
+/* ── O'ng: ko'k panel ─────────────────────────────────────────────────────
+   Jonli ko'rinishdagi statik demo — mahsulot nima qilishini ko'rsatadi. */
+.auth__brand-side {
+  display: none;
+  position: relative; overflow: hidden;
+  padding: 48px;
+  background: linear-gradient(160deg, var(--ek-blue-800), var(--ek-blue-600) 62%, var(--ek-blue-700));
+  color: #FFFFFF;
+  align-items: center; justify-content: center;
+}
+@media (min-width: 900px) { .auth__brand-side { display: flex; } }
+
+.auth__brand-inner { position: relative; z-index: 1; width: 100%; max-width: 380px; }
+.auth__brand-eyebrow {
+  font-size: var(--fs-2xs); font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; opacity: .62; margin-bottom: 12px;
+}
+.auth__brand-title {
+  font-family: var(--font-display);
+  font-size: 1.6rem; font-weight: 800; line-height: 1.25; letter-spacing: -.025em;
+  margin-bottom: 28px;
+}
+
+/* Chek bloki — pastida yirtilgan qirra (brend imzosi) */
+.auth__receipt {
+  background: #FFFFFF; color: var(--ek-ink-950);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  padding: 18px 20px 20px;
+  box-shadow: 0 24px 56px rgba(10, 46, 107, .40);
+  --tear: 9px;
+}
+.auth__receipt-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding-bottom: 10px; margin-bottom: 10px;
+  border-bottom: 1px dashed var(--ek-ink-300);
+  font-size: var(--fs-2xs); color: var(--ek-ink-500);
+}
+.auth__receipt-label {
+  font-size: var(--fs-2xs); font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ek-ink-500);
+}
+.auth__receipt-total {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 1.9rem; font-weight: 700; color: var(--ek-green-700);
+  line-height: 1.15; margin-bottom: 12px;
+}
+.auth__receipt-row {
+  display: flex; justify-content: space-between; gap: 10px;
+  font-size: var(--fs-xs); padding: 4px 0; color: var(--ek-ink-600);
+}
+.auth__receipt-row b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ek-ink-950); }
+
+.auth__points { list-style: none; margin-top: 40px; display: grid; gap: 14px; }
+.auth__points li { display: flex; align-items: flex-start; gap: 11px; font-size: var(--fs-sm); opacity: .92; }
+.auth__points i { margin-top: 2px; opacity: .8; }
