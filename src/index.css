@@ -156,6 +156,21 @@ img.logo--dark { display: none; }
   font-size: var(--fs-xs); color: var(--fg-secondary); text-align: center;
 }
 
+/* «Parolni unutdim» va «Kirishga qaytish».
+   ⚠ Balandligi 44px — 02-DESIGN-SYSTEM.md qoidasi har bir bosiladigan
+   elementga tegishli, havola ham istisno emas. */
+.auth__link {
+  display: block; width: 100%; min-height: 44px;
+  margin-top: 10px; padding: 10px;
+  background: none; border: none; cursor: pointer;
+  font: inherit; font-size: var(--fs-sm);
+  color: var(--fg-brand); text-align: center;
+}
+.auth__link:hover { text-decoration: underline; }
+.auth__link:focus-visible {
+  outline: 2px solid var(--border-brand); outline-offset: 2px; border-radius: 8px;
+}
+
 /* ── O'ng: brend paneli ───────────────────────────────────────────────────
    ⚠ Ilgari bu panel HAR IKKALA temada ham to'q ko'k gradient edi — yorug'
    rejimda ekranning yarmi qora blok bo'lib turardi.

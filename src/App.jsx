@@ -47,7 +47,13 @@ async function post(path, body, extraHeaders = {}) {
   }
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const e = new Error(humanError(res.status, json.message)); e.status = res.status; throw e;
+    const e = new Error(humanError(res.status, json.message));
+    e.status = res.status;
+    /* ⚠ Javob tanasi ham ilova qilinadi: 428 da `twoFactorRequired`
+       bayrog'i keladi va uni XATO deb ko'rsatib bo'lmaydi — bu «kod
+       maydonini oching» degan signal. */
+    e.data = json;
+    throw e;
   }
   return json;
 }
@@ -107,18 +113,31 @@ function redirectWithToken({ type, accessToken, refreshToken, username, fullName
   );
 }
 
+/* Pochtadagi havola `?token=…&type=admin` bilan keladi — shu bo'lsa
+   ekran darhol «yangi parol» ko'rinishida ochiladi. */
+const _resetToken = new URLSearchParams(window.location.search).get("token") || "";
+
 export default function App() {
   const { t } = useT();
   const [tab, setTab]           = useState("user");
-  const [form, setForm]         = useState({ shopCode: "", username: "", password: "" });
+  const [form, setForm]         = useState({ shopCode: "", username: "", password: "", totpCode: "" });
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
+  const [notice, setNotice]     = useState("");  // muvaffaqiyat xabari (xato emas)
   const [shake, setShake]       = useState(0);   // har xatoda ortadi → bir martalik silkinish
   const [showPass, setShowPass] = useState(false);
   const [leaving, setLeaving]   = useState(false);
+  /* Ekran: kirish · parolni unutdim · yangi parol.
+     ⚠ Router qo'shilmadi: bu ilovada uchta ko'rinish bor va router
+     uchun 40 KB kutubxona olib kelish — kirish sahifasini og'irlashtirish
+     demak (05-AUTH.md: «Eng kichik ilova, lekin birinchi taassurot»). */
+  const [view, setView] = useState(_resetToken ? "reset" : "login");
+  /* Parol to'g'ri, endi 2FA kodi kerak (server 428 qaytardi). */
+  const [twoFactor, setTwoFactor] = useState(false);
 
   const firstFieldRef = useRef(null);
   const errorRef      = useRef(null);
+  const codeRef       = useRef(null);
 
   // Login maydoni avtomatik fokusda — kassir sichqonchaga tegmasin
   useEffect(() => { firstFieldRef.current?.focus(); }, [tab]);
@@ -138,7 +157,12 @@ export default function App() {
     try {
       if (tab === "admin") {
         const r1 = await post("/auth/admin/login",
-          { username: form.username.trim(), password: form.password },
+          {
+            username: form.username.trim(),
+            password: form.password,
+            // 2FA yoqilmagan hisobda bo'sh ketadi va e'tiborsiz qoladi.
+            totpCode: form.totpCode.trim() || undefined,
+          },
           { "X-Device-Id": getDeviceId() });
         const me = await get("/auth/admin/me", r1.data.accessToken).catch(() => ({ data: {} }));
         setLeaving(true);
@@ -170,8 +194,62 @@ export default function App() {
         });
       }
     } catch (err) {
+      /* ⚠ 428 — XATO EMAS: parol to'g'ri, endi kod kerak. «Login yoki
+         parol noto'g'ri» deb ko'rsatilsa, foydalanuvchi to'g'ri parolini
+         qayta-qayta terib o'zini bloklab qo'yardi. */
+      if (err.status === 428 && err.data?.twoFactorRequired) {
+        setTwoFactor(true);
+        setLoading(false);
+        setNotice(err.data.message || t("login.twoFactorHint"));
+        setTimeout(() => codeRef.current?.focus(), 30);
+        return;
+      }
       fail(err.message);
       errorRef.current?.focus?.();
+    }
+  };
+
+  /* ── Parolni unutdim ──────────────────────────────────────────────
+     ⚠ Javob har doim bir xil («yubordik»): server hisob bor-yo'qligini
+     oshkor qilmaydi va front ham qilmasligi kerak. */
+  const handleForgot = async (e) => {
+    e.preventDefault();
+    setError(""); setNotice("");
+    if (!form.username.trim()) return fail(t("login.needUsername"));
+    if (tab === "user" && !form.shopCode.trim()) return fail(t("login.needShopCode"));
+    setLoading(true);
+    try {
+      const r = await post("/auth/password/forgot", {
+        accountType: tab === "admin" ? "ADMIN" : "USER",
+        username: form.username.trim(),
+        shopCode: tab === "admin" ? null : form.shopCode.trim(),
+      }, { "X-Device-Id": getDeviceId() });
+      setNotice(r.message || t("login.forgotSent"));
+      setLoading(false);
+    } catch (err) {
+      fail(err.message);
+    }
+  };
+
+  /* ── Yangi parol (pochtadagi havoladan) ───────────────────────────── */
+  const handleReset = async (e) => {
+    e.preventDefault();
+    setError(""); setNotice("");
+    if (!form.password || form.password.length < 8) return fail(t("login.resetTooShort"));
+    setLoading(true);
+    try {
+      const r = await post("/auth/password/reset", {
+        token: _resetToken, newPassword: form.password,
+      }, { "X-Device-Id": getDeviceId() });
+      setNotice(r.message || t("login.resetDone"));
+      setLoading(false);
+      setForm((p) => ({ ...p, password: "" }));
+      // Havolani URL dan tozalaymiz: sahifa yangilansa token qayta
+      // ishlatilmaydi (u baribir bir martalik) va manzil qatorida turmaydi.
+      window.history.replaceState({}, "", window.location.pathname);
+      setTimeout(() => setView("login"), 1500);
+    } catch (err) {
+      fail(err.message);
     }
   };
 
@@ -193,7 +271,7 @@ export default function App() {
             Sekin animatsiya bilan kutdirilmaydi. */}
         <form
           className="auth__form"
-          onSubmit={handleSubmit}
+          onSubmit={view === "login" ? handleSubmit : view === "forgot" ? handleForgot : handleReset}
           style={leaving
             ? { opacity: 0, transform: "scale(.98)", transition: "opacity var(--dur-base) var(--ease-in), transform var(--dur-base) var(--ease-in)" }
             : undefined}
@@ -204,11 +282,16 @@ export default function App() {
           <img src={LOGO_DARK_URL} alt="" aria-hidden="true" className="auth__logo logo--dark ek-in-fade"
                onError={(e) => { e.target.style.display = "none"; }} />
 
-          <h1 className="auth__title ek-in-up" style={{ animationDelay: "60ms" }}>{t("login.welcome")}</h1>
+          <h1 className="auth__title ek-in-up" style={{ animationDelay: "60ms" }}>
+            {view === "login" ? t("login.welcome")
+              : view === "forgot" ? t("login.forgotTitle") : t("login.resetTitle")}
+          </h1>
           <p className="auth__sub ek-in-up" style={{ animationDelay: "120ms" }}>
-            {t("login.subtitle")}
+            {view === "login" ? t("login.subtitle")
+              : view === "forgot" ? t("login.forgotSub") : t("login.resetSub")}
           </p>
 
+          {view !== "reset" && (
           <div className="auth__seg" role="tablist" aria-label={t("login.tabType")}>
             {[
               { k: "user",  icon: "fa-store",         label: t("login.tabUser") },
@@ -217,21 +300,22 @@ export default function App() {
               <button
                 key={k} type="button" role="tab"
                 aria-selected={tab === k}
-                onClick={() => { setTab(k); setError(""); }}
+                onClick={() => { setTab(k); setError(""); setNotice(""); setTwoFactor(false); }}
               >
                 <i className={`fa-solid ${icon}`} style={{ marginRight: 6 }} aria-hidden="true" />{label}
               </button>
             ))}
           </div>
+          )}
 
-          {isAdmin && (
+          {isAdmin && view === "login" && (
             <div className="auth__note">
               <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
               {t("login.adminNote")}
             </div>
           )}
 
-          {!isAdmin && (
+          {!isAdmin && view !== "reset" && (
             <div className="auth__field">
               <label className="auth__label" htmlFor="shopCode">{t("login.shopCode")}</label>
               <input
@@ -245,6 +329,7 @@ export default function App() {
             </div>
           )}
 
+          {view !== "reset" && (
           <div className="auth__field">
             <label className="auth__label" htmlFor="username">{t("login.login")}</label>
             <input
@@ -257,16 +342,21 @@ export default function App() {
               aria-describedby={error ? "auth-error" : undefined}
             />
           </div>
+          )}
 
+          {view !== "forgot" && (
           <div className="auth__field">
-            <label className="auth__label" htmlFor="password">{t("login.password")}</label>
+            <label className="auth__label" htmlFor="password">
+              {view === "reset" ? t("login.newPassword") : t("login.password")}
+            </label>
             <div className="auth__input-wrap">
               <input
                 id="password"
                 className="auth__input auth__input--pass"
                 type={showPass ? "text" : "password"}
                 value={form.password} onChange={set("password")}
-                placeholder="••••••••" autoComplete="current-password"
+                placeholder="••••••••"
+                autoComplete={view === "reset" ? "new-password" : "current-password"}
                 aria-invalid={!!error || undefined}
                 aria-describedby={error ? "auth-error" : undefined}
               />
@@ -278,6 +368,35 @@ export default function App() {
               </button>
             </div>
           </div>
+          )}
+
+          {/* ── Ikki bosqichli kod ─────────────────────────────────────
+              Faqat server so'raganda ko'rinadi (428). Doim ko'rsatilsa,
+              2FA yoqmagan hamma odam «bu nima?» deb to'xtab qolardi.
+              Maydon BITTA: telefon yo'q bo'lsa shu yerga tiklash kodi
+              yoziladi (backenddagi bilan bir xil qoida). */}
+          {twoFactor && view === "login" && (
+            <div className="auth__field">
+              <label className="auth__label" htmlFor="totpCode">{t("login.twoFactorCode")}</label>
+              <input
+                id="totpCode" ref={codeRef}
+                className="auth__input ek-num"
+                value={form.totpCode} onChange={set("totpCode")}
+                placeholder="123456" inputMode="text" autoComplete="one-time-code"
+                aria-describedby="auth-2fa-hint"
+              />
+              <p id="auth-2fa-hint" className="auth__foot" style={{ marginTop: 6 }}>
+                {t("login.twoFactorHint")}
+              </p>
+            </div>
+          )}
+
+          {notice && (
+            <div className="auth__note" role="status" aria-live="polite">
+              <i className="fa-solid fa-circle-info" aria-hidden="true" />
+              <span>{notice}</span>
+            </div>
+          )}
 
           {error && (
             <div
@@ -296,14 +415,33 @@ export default function App() {
             className={`auth__submit ${isAdmin ? "auth__submit--admin" : ""}`}>
             {loading
               ? <><span className="ek-spinner" aria-hidden="true" /> {t("common.checking")}</>
-              : <><i className={`fa-solid ${isAdmin ? "fa-shield-halved" : "fa-right-to-bracket"}`} aria-hidden="true" />
-                  {isAdmin ? t("login.submitAdmin") : t("login.submit")}</>}
+              : view === "forgot"
+                ? <><i className="fa-solid fa-paper-plane" aria-hidden="true" /> {t("login.forgotSubmit")}</>
+                : view === "reset"
+                  ? <><i className="fa-solid fa-key" aria-hidden="true" /> {t("login.resetSubmit")}</>
+                  : <><i className={`fa-solid ${isAdmin ? "fa-shield-halved" : "fa-right-to-bracket"}`} aria-hidden="true" />
+                      {isAdmin ? t("login.submitAdmin") : t("login.submit")}</>}
           </button>
 
+          {/* «Parolni unutdim» — 05-AUTH.md dagi maketda ko'rsatilgan
+              joyda: tugmadan keyin, kichik havola sifatida. */}
+          {view === "login" && (
+            <button type="button" className="auth__link"
+                    onClick={() => { setView("forgot"); setError(""); setNotice(""); }}>
+              {t("login.forgotLink")}
+            </button>
+          )}
+          {view !== "login" && (
+            <button type="button" className="auth__link"
+                    onClick={() => { setView("login"); setError(""); setNotice(""); }}>
+              <i className="fa-solid fa-arrow-left" aria-hidden="true" /> {t("login.backToLogin")}
+            </button>
+          )}
+
           <p className="auth__foot">
-            {t("login.redirectNote", {
-              host: isAdmin ? "admin.e-kassam.uz" : "app.e-kassam.uz",
-            })}
+            {view === "login"
+              ? t("login.redirectNote", { host: isAdmin ? "admin.e-kassam.uz" : "app.e-kassam.uz" })
+              : t("login.resetFoot")}
           </p>
         </form>
       </div>
