@@ -3,6 +3,7 @@ import { API_BASE, APP_URL, ADMIN_URL, getDeviceId, LOGO_URL, LOGO_DARK_URL } fr
 import { t, getLang, useT } from "./lib/ek-i18n";
 import ThemeSelect from "./components/ek/ThemeSelect";
 import LangSelect from "./components/ek/LangSelect";
+import { CodeField, UsernameField, OtpField } from "./components/ek/EkFields";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Kirish ekrani — 05-AUTH.md
@@ -318,7 +319,7 @@ export default function App() {
           {!isAdmin && view !== "reset" && (
             <div className="auth__field">
               <label className="auth__label" htmlFor="shopCode">{t("login.shopCode")}</label>
-              <input
+              <CodeField
                 id="shopCode" ref={firstFieldRef}
                 className="auth__input"
                 value={form.shopCode} onChange={set("shopCode")}
@@ -332,7 +333,7 @@ export default function App() {
           {view !== "reset" && (
           <div className="auth__field">
             <label className="auth__label" htmlFor="username">{t("login.login")}</label>
-            <input
+            <UsernameField
               id="username"
               ref={isAdmin ? firstFieldRef : undefined}
               className="auth__input"
@@ -378,11 +379,11 @@ export default function App() {
           {twoFactor && view === "login" && (
             <div className="auth__field">
               <label className="auth__label" htmlFor="totpCode">{t("login.twoFactorCode")}</label>
-              <input
+              <OtpField
                 id="totpCode" ref={codeRef}
                 className="auth__input ek-num"
                 value={form.totpCode} onChange={set("totpCode")}
-                placeholder="123456" inputMode="text" autoComplete="one-time-code"
+                placeholder="123456"
                 aria-describedby="auth-2fa-hint"
               />
               <p id="auth-2fa-hint" className="auth__foot" style={{ marginTop: 6 }}>
