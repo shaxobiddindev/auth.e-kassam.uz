@@ -121,7 +121,7 @@ const _resetToken = new URLSearchParams(window.location.search).get("token") || 
 export default function App() {
   const { t } = useT();
   const [tab, setTab]           = useState("user");
-  const [form, setForm]         = useState({ shopCode: "", username: "", password: "", totpCode: "" });
+  const [form, setForm]         = useState({ shopCode: "", username: "", password: "", totpCode: "", deviceCode: "" });
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
   const [notice, setNotice]     = useState("");  // muvaffaqiyat xabari (xato emas)
@@ -135,10 +135,18 @@ export default function App() {
   const [view, setView] = useState(_resetToken ? "reset" : "login");
   /* Parol to'g'ri, endi 2FA kodi kerak (server 428 qaytardi). */
   const [twoFactor, setTwoFactor] = useState(false);
+  /* Parol to'g'ri, lekin qurilma YANGI — pochtadagi kod kerak (V29, 428). */
+  const [deviceConfirm, setDeviceConfirm] = useState(false);
+  /* Ega/admin oilasida bir nechta do'kon — tanlash ekrani (V29).
+     `pending` — kirish natijasi: do'kon tanlangunicha tokenlar shu yerda
+     turadi, redirect esa tanlovdan KEYIN bo'ladi. */
+  const [stores, setStores]   = useState(null);
+  const [pending, setPending] = useState(null);
 
   const firstFieldRef = useRef(null);
   const errorRef      = useRef(null);
   const codeRef       = useRef(null);
+  const deviceRef     = useRef(null);
 
   // Login maydoni avtomatik fokusda — kassir sichqonchaga tegmasin
   useEffect(() => { firstFieldRef.current?.focus(); }, [tab]);
@@ -177,21 +185,39 @@ export default function App() {
         });
       } else {
         const r1 = await post("/auth/login",
-          { shopCode: form.shopCode.trim(), username: form.username.trim(), password: form.password },
+          {
+            shopCode: form.shopCode.trim(), username: form.username.trim(), password: form.password,
+            // Yangi qurilma kodi — server 428 qaytargandan keyingi urinishda (V29)
+            deviceCode: form.deviceCode.trim() || undefined,
+          },
           { "X-Device-Id": getDeviceId() });
         let meData = {};
         try { meData = (await get("/auth/me", r1.data.accessToken)).data || {}; } catch (_) {}
         const roles = meData.roles || r1.data?.roles || [];
         const roleStr = roles.map((r) => r?.type || r?.name || String(r || "")).filter(Boolean).join(",");
-        setLeaving(true);
-        redirectWithToken({
+        const meta = {
           type: "user",
-          accessToken:  r1.data.accessToken,
-          refreshToken: r1.data.refreshToken,
           username: meData.username || r1.data?.username || form.username.trim(),
           fullName: meData.fullName || r1.data?.fullName || form.username.trim(),
           role: roleStr,
-          shopCode: form.shopCode.trim(),
+        };
+
+        /* Oilada bir nechta do'kon — avval tanlov (V29, /select-store).
+           Tokenlar `pending` da turadi, redirect tanlovdan keyin. */
+        if (Array.isArray(r1.data.stores) && r1.data.stores.length > 1) {
+          setPending({ r1: r1.data, meta });
+          setStores(r1.data.stores);
+          setDeviceConfirm(false);
+          setLoading(false);
+          return;
+        }
+
+        setLeaving(true);
+        redirectWithToken({
+          ...meta,
+          accessToken:  r1.data.accessToken,
+          refreshToken: r1.data.refreshToken,
+          shopCode: r1.data.shopCode || form.shopCode.trim(),
         });
       }
     } catch (err) {
@@ -205,8 +231,50 @@ export default function App() {
         setTimeout(() => codeRef.current?.focus(), 30);
         return;
       }
+      /* Xuddi shu qoida — qurilma tasdig'i ham XATO EMAS (V29). */
+      if (err.status === 428 && err.data?.deviceConfirmationRequired) {
+        setDeviceConfirm(true);
+        setLoading(false);
+        setNotice(err.data.message || t("login.deviceHint"));
+        setTimeout(() => deviceRef.current?.focus(), 30);
+        return;
+      }
       fail(err.message);
       errorRef.current?.focus?.();
+    }
+  };
+
+  /* ── Do'kon tanlash (V29) ─────────────────────────────────────────────
+     O'z do'koni tanlansa kirishdagi tokenlar ishlatiladi; filial tanlansa
+     server o'sha filial nomidan YANGI tokenlar beradi. */
+  const pickStore = async (s) => {
+    if (!pending) return;
+    setError("");
+    if (s.code === pending.r1.shopCode) {
+      setLeaving(true);
+      redirectWithToken({
+        ...pending.meta,
+        accessToken:  pending.r1.accessToken,
+        refreshToken: pending.r1.refreshToken,
+        shopCode: pending.r1.shopCode,
+      });
+      return;
+    }
+    setLoading(true);
+    try {
+      const r2 = await post("/auth/select-store", { shopId: s.id }, {
+        "X-Device-Id": getDeviceId(),
+        Authorization: `Bearer ${pending.r1.accessToken}`,
+      });
+      setLeaving(true);
+      redirectWithToken({
+        ...pending.meta,
+        accessToken:  r2.data.accessToken,
+        refreshToken: r2.data.refreshToken,
+        shopCode: r2.data.shopCode || s.code,
+      });
+    } catch (err) {
+      fail(err.message);
     }
   };
 
@@ -268,8 +336,61 @@ export default function App() {
 
       {/* ══ CHAP: forma ══ */}
       <div className="auth__form-side">
-        {/* Muvaffaqiyatli kirishda forma scale(.98)+opacity 0 → yo'naltirish.
-            Sekin animatsiya bilan kutdirilmaydi. */}
+        {stores ? (
+          /* ── Do'kon tanlash (V29, /select-store) ─────────────────────
+             Kirish MUVAFFAQIYATLI bo'ldi, faqat qaysi do'kon nomidan
+             ishlash qoldi. Birinchisi — xodimning o'z do'koni. */
+          <div className="auth__form"
+               style={leaving
+                 ? { opacity: 0, transform: "scale(.98)", transition: "opacity var(--dur-base) var(--ease-in), transform var(--dur-base) var(--ease-in)" }
+                 : undefined}>
+            <img src={LOGO_URL} alt="e-Kassam" className="auth__logo logo--light ek-in-fade"
+                 onError={(e) => { e.target.style.display = "none"; }} />
+            <img src={LOGO_DARK_URL} alt="" aria-hidden="true" className="auth__logo logo--dark ek-in-fade"
+                 onError={(e) => { e.target.style.display = "none"; }} />
+            <h1 className="auth__title ek-in-up" style={{ animationDelay: "60ms" }}>
+              {t("login.selectStoreTitle")}
+            </h1>
+            <p className="auth__sub ek-in-up" style={{ animationDelay: "120ms" }}>
+              {t("login.selectStoreSub")}
+            </p>
+
+            {error && (
+              <div className="auth__error" role="alert" aria-live="assertive">
+                <i className="fa-solid fa-circle-exclamation" style={{ marginTop: 2 }} aria-hidden="true" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="auth__stores" role="list">
+              {stores.map((s, i) => (
+                <button key={s.id} type="button" role="listitem"
+                        className="auth__store ek-in-up"
+                        style={{ animationDelay: `${160 + i * 50}ms` }}
+                        disabled={loading}
+                        onClick={() => pickStore(s)}>
+                  <i className={`fa-solid ${s.branch ? "fa-code-branch" : "fa-store"}`} aria-hidden="true" />
+                  <span className="auth__store-text">
+                    <b>{s.name}</b>
+                    <small>
+                      {s.code === pending?.r1?.shopCode
+                        ? t("login.myStore")
+                        : s.branch ? t("login.branchStore") : t("login.mainStore")}
+                    </small>
+                  </span>
+                  {loading
+                    ? <span className="ek-spinner" aria-hidden="true" />
+                    : <i className="fa-solid fa-chevron-right" aria-hidden="true" />}
+                </button>
+              ))}
+            </div>
+
+            <button type="button" className="auth__link"
+                    onClick={() => { setStores(null); setPending(null); setError(""); }}>
+              <i className="fa-solid fa-arrow-left" aria-hidden="true" /> {t("login.backToLogin")}
+            </button>
+          </div>
+        ) : (
         <form
           className="auth__form"
           onSubmit={view === "login" ? handleSubmit : view === "forgot" ? handleForgot : handleReset}
@@ -301,7 +422,7 @@ export default function App() {
               <button
                 key={k} type="button" role="tab"
                 aria-selected={tab === k}
-                onClick={() => { setTab(k); setError(""); setNotice(""); setTwoFactor(false); }}
+                onClick={() => { setTab(k); setError(""); setNotice(""); setTwoFactor(false); setDeviceConfirm(false); }}
               >
                 <i className={`fa-solid ${icon}`} style={{ marginRight: 6 }} aria-hidden="true" />{label}
               </button>
@@ -392,6 +513,25 @@ export default function App() {
             </div>
           )}
 
+          {/* ── Yangi qurilma kodi (V29) ───────────────────────────────
+              2FA bilan bir xil qoida: faqat server so'raganda (428)
+              ko'rinadi, kirish o'sha forma bilan qaytariladi. */}
+          {deviceConfirm && view === "login" && (
+            <div className="auth__field">
+              <label className="auth__label" htmlFor="deviceCode">{t("login.deviceCode")}</label>
+              <OtpField
+                id="deviceCode" ref={deviceRef}
+                className="auth__input ek-num"
+                value={form.deviceCode} onChange={set("deviceCode")}
+                placeholder="123456"
+                aria-describedby="auth-device-hint"
+              />
+              <p id="auth-device-hint" className="auth__foot" style={{ marginTop: 6 }}>
+                {t("login.deviceHint")}
+              </p>
+            </div>
+          )}
+
           {notice && (
             <div className="auth__note" role="status" aria-live="polite">
               <i className="fa-solid fa-circle-info" aria-hidden="true" />
@@ -445,6 +585,7 @@ export default function App() {
               : t("login.resetFoot")}
           </p>
         </form>
+        )}
       </div>
 
       {/* ══ O'NG: ko'k panel — mobilda yo'qoladi ══ */}
