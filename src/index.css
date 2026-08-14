@@ -83,6 +83,28 @@ img.logo--dark { display: none; }
 .auth__store-text b { font-weight: 700; }
 .auth__store-text small { font-size: var(--fs-xs); color: var(--fg-secondary); }
 
+/* ── Ro'yxatdan o'tish (V31) ──────────────────────────────────────────── */
+/* Telefon: +998 kodi maydon TASHQARIDA (kassa ilovasi bilan bir qoida —
+   kod ichida bo'lsa to'liq raqam yozgan odamda ikkilanardi). */
+.ek-phone { display: inline-flex; align-items: stretch; width: 100%; }
+.ek-phone__cc {
+  display: flex; align-items: center; padding: 0 8px 0 12px;
+  font-family: var(--font-mono); font-size: 13px; white-space: nowrap;
+  color: var(--fg-secondary); background: var(--bg-sunken);
+  border: 1.5px solid var(--border-default); border-right: 0;
+  border-radius: var(--r-md) 0 0 var(--r-md); user-select: none;
+}
+.ek-phone > input { border-radius: 0 var(--r-md) var(--r-md) 0 !important; }
+.ek-phone:focus-within .ek-phone__cc { border-color: var(--border-brand); }
+
+/* Tarif kartalari — .auth__store ustiga tanlangan holat */
+.auth__store[aria-pressed="true"] {
+  border-color: var(--border-brand);
+  background: var(--bg-brand-subtle);
+}
+.auth__grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 480px) { .auth__grid2 { grid-template-columns: 1fr; } }
+
 /* Segmented — do'kon xodimi / admin */
 .auth__seg {
   display: flex; gap: 4px; padding: 4px; margin-bottom: 20px;

@@ -3,7 +3,7 @@ import { API_BASE, APP_URL, ADMIN_URL, getDeviceId, LOGO_URL, LOGO_DARK_URL } fr
 import { t, getLang, useT } from "./lib/ek-i18n";
 import ThemeSelect from "./components/ek/ThemeSelect";
 import LangSelect from "./components/ek/LangSelect";
-import { CodeField, UsernameField, OtpField } from "./components/ek/EkFields";
+import { CodeField, UsernameField, OtpField, NameField, PhoneField, EmailField } from "./components/ek/EkFields";
 
 /* ══════════════════════════════════════════════════════════════════════════
    Kirish ekrani — 05-AUTH.md
@@ -118,6 +118,18 @@ function redirectWithToken({ type, accessToken, refreshToken, username, fullName
    ekran darhol «yangi parol» ko'rinishida ochiladi. */
 const _resetToken = new URLSearchParams(window.location.search).get("token") || "";
 
+/* Ro'yxatdan o'tishni tasdiqlash havolasi `?signup=…` bilan keladi (V31) —
+   shu bo'lsa do'kon yaratiladi va odam darhol tizimga kiritiladi.
+   `?register=1&plan=…` esa landing'dan: formani ochadi, tarifni oldindan
+   tanlab qo'yadi (parametr nomlari ATAYLAB har xil — token bilan
+   adashmasin). */
+const _signupToken = new URLSearchParams(window.location.search).get("signup") || "";
+const _openSignup = new URLSearchParams(window.location.search).get("register") === "1";
+const _planParam = (() => {
+  const p = new URLSearchParams(window.location.search).get("plan");
+  return ["FREE", "BASIC", "PREMIUM"].includes(p) ? p : "FREE";
+})();
+
 export default function App() {
   const { t } = useT();
   const [tab, setTab]           = useState("user");
@@ -132,7 +144,14 @@ export default function App() {
      ⚠ Router qo'shilmadi: bu ilovada uchta ko'rinish bor va router
      uchun 40 KB kutubxona olib kelish — kirish sahifasini og'irlashtirish
      demak (05-AUTH.md: «Eng kichik ilova, lekin birinchi taassurot»). */
-  const [view, setView] = useState(_resetToken ? "reset" : "login");
+  const [view, setView] = useState(
+    _resetToken ? "reset" : _signupToken ? "confirmSignup" : _openSignup ? "signup" : "login");
+  /* Ro'yxatdan o'tish formasi (V31). `plan` — xohlagan tarif; pullik
+     tanlansa ham sinovda boshlanadi (superadmin to'lovni qo'lda kiritadi). */
+  const [signup, setSignup] = useState({
+    shopName: "", ownerName: "", phone: "", email: "", username: "", password: "", plan: _planParam,
+  });
+  const [signupSent, setSignupSent] = useState(false);
   /* Parol to'g'ri, endi 2FA kodi kerak (server 428 qaytardi). */
   const [twoFactor, setTwoFactor] = useState(false);
   /* Parol to'g'ri, lekin qurilma YANGI — pochtadagi kod kerak (V29, 428). */
@@ -278,6 +297,76 @@ export default function App() {
     }
   };
 
+  /* ── Ro'yxatdan o'tish (V31) ─────────────────────────────────────── */
+  const setS = (k) => (e) => { setError(""); setSignup((p) => ({ ...p, [k]: e.target.value })); };
+
+  const handleSignup = async (e) => {
+    e.preventDefault();
+    setError(""); setNotice("");
+    const s = signup;
+    if (!s.shopName.trim() || !s.ownerName.trim() || !s.email.trim()
+        || !s.username.trim() || !s.password) {
+      return fail(t("signup.fillAll"));
+    }
+    if (s.password.length < 8) return fail(t("login.resetTooShort"));
+    // Telefon: maskadan qat'i nazar to'liq +998XXXXXXXXX ga keltiriladi
+    const digits = s.phone.replace(/\D/g, "");
+    const phone = !digits ? undefined
+      : digits.length === 9 ? `+998${digits}`
+      : digits.length === 12 && digits.startsWith("998") ? `+${digits}`
+      : null;
+    if (phone === null) return fail(t("signup.phoneInvalid"));
+    setLoading(true);
+    try {
+      const r = await post("/public/signup", {
+        shopName: s.shopName.trim(),
+        ownerName: s.ownerName.trim(),
+        phone,
+        email: s.email.trim(),
+        username: s.username.trim(),
+        password: s.password,
+        plan: s.plan,
+      });
+      setSignupSent(true);
+      setNotice(r.message || t("signup.sent"));
+      setLoading(false);
+    } catch (err) {
+      fail(err.message);
+    }
+  };
+
+  /* Pochtadagi havola: do'kon YARATILADI va tokenlar qaytadi — kutish
+     ekrani ko'rsatib turib, tayyor bo'lgach ilovaga yo'naltiramiz. */
+  const confirmRan = useRef(false);
+  useEffect(() => {
+    if (view !== "confirmSignup" || confirmRan.current) return;
+    confirmRan.current = true;
+    (async () => {
+      try {
+        const r = await post("/public/signup/confirm", { token: _signupToken },
+          { "X-Device-Id": getDeviceId() });
+        let meData = {};
+        try { meData = (await get("/auth/me", r.data.accessToken)).data || {}; } catch (_) {}
+        // Havola manzil qatorida qolmasin — yangilashda «yaroqsiz» chiqardi
+        window.history.replaceState({}, "", window.location.pathname);
+        setLeaving(true);
+        redirectWithToken({
+          type: "user",
+          accessToken:  r.data.accessToken,
+          refreshToken: r.data.refreshToken,
+          username: meData.username || "",
+          fullName: meData.fullName || "",
+          role: (meData.roles || []).map((x) => x?.type || x?.name || "").filter(Boolean).join(","),
+          shopCode: r.data.shopCode,
+        });
+      } catch (err) {
+        window.history.replaceState({}, "", window.location.pathname);
+        setView("signup");
+        fail(err.message);
+      }
+    })();
+  }, [view]);
+
   /* ── Parolni unutdim ──────────────────────────────────────────────
      ⚠ Javob har doim bir xil («yubordik»): server hisob bor-yo'qligini
      oshkor qilmaydi va front ham qilmasligi kerak. */
@@ -390,6 +479,136 @@ export default function App() {
               <i className="fa-solid fa-arrow-left" aria-hidden="true" /> {t("login.backToLogin")}
             </button>
           </div>
+        ) : view === "confirmSignup" ? (
+          /* ── Pochta havolasi tasdiqlanyapti (V31) — do'kon yaratilmoqda ── */
+          <div className="auth__form">
+            <img src={LOGO_URL} alt="e-Kassam" className="auth__logo logo--light ek-in-fade"
+                 onError={(e) => { e.target.style.display = "none"; }} />
+            <img src={LOGO_DARK_URL} alt="" aria-hidden="true" className="auth__logo logo--dark ek-in-fade"
+                 onError={(e) => { e.target.style.display = "none"; }} />
+            <h1 className="auth__title ek-in-up">{t("signup.confirming")}</h1>
+            <p className="auth__sub ek-in-up" style={{ animationDelay: "80ms" }}>
+              {t("signup.confirmingSub")}
+            </p>
+            <div style={{ display: "flex", justifyContent: "center", padding: 20 }}>
+              <span className="ek-spinner" aria-hidden="true" style={{ width: 28, height: 28 }} />
+            </div>
+          </div>
+        ) : view === "signup" ? (
+          /* ── Ro'yxatdan o'tish (V31) ──────────────────────────────────── */
+          <form className="auth__form" onSubmit={handleSignup}>
+            <img src={LOGO_URL} alt="e-Kassam" className="auth__logo logo--light ek-in-fade"
+                 onError={(e) => { e.target.style.display = "none"; }} />
+            <img src={LOGO_DARK_URL} alt="" aria-hidden="true" className="auth__logo logo--dark ek-in-fade"
+                 onError={(e) => { e.target.style.display = "none"; }} />
+            <h1 className="auth__title ek-in-up">{t("signup.title")}</h1>
+            <p className="auth__sub ek-in-up" style={{ animationDelay: "80ms" }}>{t("signup.sub")}</p>
+
+            {signupSent ? (
+              <>
+                <div className="auth__note" role="status" aria-live="polite">
+                  <i className="fa-solid fa-envelope-circle-check" aria-hidden="true" />
+                  <span>{notice || t("signup.sent")}</span>
+                </div>
+                <button type="button" className="auth__link"
+                        onClick={() => { setView("login"); setSignupSent(false); setNotice(""); }}>
+                  <i className="fa-solid fa-arrow-left" aria-hidden="true" /> {t("login.backToLogin")}
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="auth__field">
+                  <label className="auth__label" htmlFor="s-shop">{t("signup.shopName")}</label>
+                  <input id="s-shop" className="auth__input" maxLength={120}
+                         value={signup.shopName} onChange={setS("shopName")}
+                         placeholder={t("signup.shopNamePh")} autoFocus />
+                </div>
+                <div className="auth__grid2">
+                  <div className="auth__field">
+                    <label className="auth__label" htmlFor="s-owner">{t("signup.ownerName")}</label>
+                    <NameField id="s-owner" className="auth__input"
+                               value={signup.ownerName} onChange={setS("ownerName")}
+                               placeholder="Ali Valiyev" autoComplete="name" />
+                  </div>
+                  <div className="auth__field">
+                    <label className="auth__label" htmlFor="s-phone">{t("signup.phone")}</label>
+                    <PhoneField id="s-phone" className="auth__input ek-num"
+                                value={signup.phone} onChange={setS("phone")} />
+                  </div>
+                </div>
+                <div className="auth__field">
+                  <label className="auth__label" htmlFor="s-email">{t("signup.email")}</label>
+                  <EmailField id="s-email" className="auth__input"
+                              value={signup.email} onChange={setS("email")}
+                              placeholder="siz@pochta.uz" autoComplete="email" />
+                  <p className="auth__foot" style={{ marginTop: 6 }}>{t("signup.emailHint")}</p>
+                </div>
+                <div className="auth__grid2">
+                  <div className="auth__field">
+                    <label className="auth__label" htmlFor="s-user">{t("login.login")}</label>
+                    <UsernameField id="s-user" className="auth__input"
+                                   value={signup.username} onChange={setS("username")}
+                                   placeholder="username" autoComplete="username" />
+                  </div>
+                  <div className="auth__field">
+                    <label className="auth__label" htmlFor="s-pass">{t("login.password")}</label>
+                    <input id="s-pass" className="auth__input" type="password"
+                           value={signup.password} onChange={setS("password")}
+                           placeholder={t("signup.passPh")} autoComplete="new-password" />
+                  </div>
+                </div>
+
+                {/* Tarif tanlash: pullik tanlansa ham SINOVDA boshlanadi —
+                    to'lov onlayn emas, biz bog'lanamiz (halol shartlar). */}
+                <div className="auth__field">
+                  <span className="auth__label">{t("signup.plan")}</span>
+                  <div className="auth__stores" role="radiogroup" aria-label={t("signup.plan")}>
+                    {[
+                      { k: "FREE",    icon: "fa-seedling",  name: t("signup.planFree"),    sub: t("signup.planFreeSub") },
+                      { k: "BASIC",   icon: "fa-store",     name: t("signup.planBasic"),   sub: t("signup.planBasicSub") },
+                      { k: "PREMIUM", icon: "fa-crown",     name: t("signup.planPremium"), sub: t("signup.planPremiumSub") },
+                    ].map((p) => (
+                      <button key={p.k} type="button" role="radio"
+                              aria-checked={signup.plan === p.k}
+                              aria-pressed={signup.plan === p.k}
+                              className="auth__store"
+                              onClick={() => setSignup((s) => ({ ...s, plan: p.k }))}>
+                        <i className={`fa-solid ${p.icon}`} aria-hidden="true" />
+                        <span className="auth__store-text">
+                          <b>{p.name}</b>
+                          <small>{p.sub}</small>
+                        </span>
+                        {signup.plan === p.k
+                          ? <i className="fa-solid fa-circle-check" aria-hidden="true" style={{ marginLeft: "auto", color: "var(--fg-brand)" }} />
+                          : <i className="fa-regular fa-circle" aria-hidden="true" style={{ marginLeft: "auto", color: "var(--fg-tertiary)" }} />}
+                      </button>
+                    ))}
+                  </div>
+                  {signup.plan !== "FREE" && (
+                    <p className="auth__foot" style={{ marginTop: 6 }}>{t("signup.paidNote")}</p>
+                  )}
+                </div>
+
+                {error && (
+                  <div className="auth__error ek-shake" role="alert" aria-live="assertive">
+                    <i className="fa-solid fa-circle-exclamation" style={{ marginTop: 2 }} aria-hidden="true" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <button type="submit" disabled={loading} className="auth__submit">
+                  {loading
+                    ? <><span className="ek-spinner" aria-hidden="true" /> {t("common.checking")}</>
+                    : <><i className="fa-solid fa-rocket" aria-hidden="true" /> {t("signup.submit")}</>}
+                </button>
+                <button type="button" className="auth__link"
+                        onClick={() => { setView("login"); setError(""); setNotice(""); }}>
+                  <i className="fa-solid fa-arrow-left" aria-hidden="true" /> {t("login.backToLogin")}
+                </button>
+                <p className="auth__foot">{t("signup.trialFoot")}</p>
+              </>
+            )}
+          </form>
         ) : (
         <form
           className="auth__form"
@@ -570,6 +789,14 @@ export default function App() {
             <button type="button" className="auth__link"
                     onClick={() => { setView("forgot"); setError(""); setNotice(""); }}>
               {t("login.forgotLink")}
+            </button>
+          )}
+          {/* Ro'yxatdan o'tish (V31) — faqat do'kon xodimi yorlig'ida:
+              admin hisobini o'zi ochib bo'lmaydi. */}
+          {view === "login" && !isAdmin && (
+            <button type="button" className="auth__link" style={{ marginTop: 2 }}
+                    onClick={() => { setView("signup"); setError(""); setNotice(""); }}>
+              <i className="fa-solid fa-store" aria-hidden="true" /> {t("signup.cta")}
             </button>
           )}
           {view !== "login" && (
