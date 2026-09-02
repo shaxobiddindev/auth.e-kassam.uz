@@ -258,7 +258,23 @@ export default function App() {
         setTimeout(() => deviceRef.current?.focus(), 30);
         return;
       }
-      fail(err.message);
+      /* ⚠ KOD BOSQICHIDA SERVER XABARI KO'RSATILADI, umumiy xabar EMAS
+         (foydalanuvchi shikoyati: «telefonim yo'q edi, zaxira kodi bilan
+         kirmoqchi edim, lekin login yoki parol xato degan xabar chiqdi»).
+
+         `humanError` HAR QANDAY 401 ni «Login yoki parol noto'g'ri» ga
+         aylantiradi va serverning haqiqiy xabarini tashlab yuboradi.
+         Birinchi qadamda bu TO'G'RI: aniq xabar («bunday admin yo'q»)
+         hisob bor-yo'qligini oshkor qilardi.
+
+         Ikkinchi qadamda esa yashiradigan narsa qolmagan — server
+         allaqachon kod so'rab, hisob borligini o'zi aytdi. Umumiy xabar
+         esa bu yerda faqat CHALG'ITADI: kod noto'g'ri bo'lsa ham odam
+         parolini qidirib, uni qayta-qayta terib o'zini bloklab qo'yardi.
+         Server bu holatda aniq aytadi: «Kod noto'g'ri yoki muddati
+         o'tgan», qurilma kodida esa o'ziga xos xabar. */
+      const askedForCode = twoFactor || deviceConfirm;
+      fail(askedForCode && err.data?.message ? err.data.message : err.message);
       errorRef.current?.focus?.();
     }
   };

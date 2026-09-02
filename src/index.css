@@ -97,6 +97,25 @@ img.logo--dark { display: none; }
 .ek-phone > input { border-radius: 0 var(--r-md) var(--r-md) 0 !important; }
 .ek-phone:focus-within .ek-phone__cc { border-color: var(--border-brand); }
 
+/* Sana maydoni — `DateField` (umumiy komponent). Auth ilovasida hozircha
+   ishlatilmaydi, lekin komponent umumiy manbadan keladi va uslubisiz
+   xato yozuvi ko'rinmay qolardi.
+   ⚠ `flex-wrap` — xato yozuvi maydonning OSTIDA, yonida emas: yonida
+   turganda u maydonni siqib, sanani ko'rsatmay qo'yardi. */
+.ek-date { position: relative; display: inline-flex; align-items: center; flex-wrap: wrap; width: 100%; }
+.ek-date.is-invalid > input { border-color: var(--border-danger); }
+.ek-date__err { flex-basis: 100%; display: flex; align-items: center; gap: 5px;
+                margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--fg-danger); }
+.ek-date > input { padding-right: 36px; }
+.ek-date__pick {
+  position: absolute; right: 4px; width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; background: transparent; cursor: pointer; border-radius: 8px;
+  color: var(--fg-secondary);
+}
+.ek-date__pick:hover { background: var(--bg-sunken); }
+.ek-date__native { position: absolute; right: 8px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
 /* Tarif kartalari — .auth__store ustiga tanlangan holat */
 .auth__store[aria-pressed="true"] {
   border-color: var(--border-brand);
