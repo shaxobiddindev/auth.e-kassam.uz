@@ -113,7 +113,7 @@ img.logo--dark { display: none; }
   border: 0; background: transparent; cursor: pointer; border-radius: 8px;
   color: var(--fg-secondary);
 }
-.ek-date__pick:hover { background: var(--bg-sunken); }
+.ek-date__pick:hover { background: var(--bg-hover); }
 .ek-date__native { position: absolute; right: 8px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 
 /* Tarif kartalari — .auth__store ustiga tanlangan holat */
