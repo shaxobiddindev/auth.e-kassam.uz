@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { API_BASE, APP_URL, ADMIN_URL, getDeviceId, LOGO_URL, LOGO_DARK_URL } from "./config";
 import { t, getLang, useT } from "./lib/ek-i18n";
+import { asArray } from "./lib/ek-array";
 import ThemeSelect from "./components/ek/ThemeSelect";
 import LangSelect from "./components/ek/LangSelect";
 import { CodeField, UsernameField, OtpField, NameField, PhoneField, EmailField } from "./components/ek/EkFields";
@@ -212,7 +213,24 @@ export default function App() {
           { "X-Device-Id": getDeviceId() });
         let meData = {};
         try { meData = (await get("/auth/me", r1.data.accessToken)).data || {}; } catch (_) {}
-        const roles = meData.roles || r1.data?.roles || [];
+        /* ⚠ TANLASH O'ZGARMADI, faqat QOROVUL qo'shildi. `||` bo'sh
+           qiymatni ushlaydi, lekin obyektni — `{}` bo'lsa ham —
+           o'tkazib yuboradi va keyingi `.map` yiqiladi.
+
+           ⚠ Bu yerda oqibati boshqa sahifalardagidan og'irroq: istisno
+           KIRISH ishlovchisi ichida bo'ladi, ya'ni tugma aylanaveradi
+           va odam tizimga umuman kira olmaydi. Server `roles` ni
+           ro'yxatdan sahifalangan javobga o'tkazsa (`{content: [...]}`),
+           butun platforma yopilardi — kassa ham, ombor ham, admin ham.
+
+           ⚠ ESLATMA (ataylab tuzatilmadi): JS da bo'sh massiv ham
+           TRUTHY, ya'ni `meData.roles` `[]` bo'lsa `r1.data.roles`
+           ga umuman o'tilmaydi. Bu alohida qaror va bu tuzatishning
+           mavzusi emas — bitta tuzatish bitta ishni qiladi.
+
+           Oxirgi `|| []` olib tashlandi: `asArray(undefined)` allaqachon
+           bo`sh massiv qaytaradi, ya`ni tanlash natijasi AYNAN bir xil. */
+        const roles = asArray(meData.roles || r1.data?.roles);
         const roleStr = roles.map((r) => r?.type || r?.name || String(r || "")).filter(Boolean).join(",");
         const meta = {
           type: "user",
