@@ -68,7 +68,7 @@ let bad = 0;
 const ok   = (m) => console.log(`  ✅ ${m}`);
 const fail = (m) => { bad++; console.log(`  ❌ ${m}`); };
 
-async function open(seed) {
+async function open(seed, query = "") {
   const page = await browser.newPage();
   await page.setViewport({ width: 1200, height: 900 });
   if (seed) {
@@ -76,7 +76,7 @@ async function open(seed) {
       try { localStorage.setItem("ek_lastLogin", JSON.stringify(v)); } catch (_) {}
     }, seed);
   }
-  await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: "networkidle2", timeout: 30_000 });
+  await page.goto(`http://127.0.0.1:${PORT}/${query}`, { waitUntil: "networkidle2", timeout: 30_000 });
   return page;
 }
 
@@ -152,6 +152,34 @@ console.log("\n══ Eslab qolingan hisob ══");
     if (!stored && left === "") ok("«Boshqa hisob» xotirani va maydonni tozaladi");
     else fail(`tozalanmadi (xotira: ${stored}, login: «${left}»)`);
   }
+  await page.close();
+}
+
+/* ── 4. Sessiya boshqa qurilmaga o'tdi (V97) ──────────────────────────── */
+console.log("\n══ Sessiya boshqa qurilmaga o'tganda ══");
+{
+  const page = await open({ shopCode: "baraka", shopName: "Baraka Shop", username: "kassir7" },
+                          "?session_taken_over=1");
+
+  const note = await page.$eval(".auth__note", (el) => el.innerText).catch(() => "");
+  if (/boshqa qurilma|another device|другого устройства/i.test(note)) {
+    ok("sabab ekranda yozilgan");
+  } else {
+    fail(`sabab ko'rinmadi — kassir «ilova buzildi» deb o'ylaydi: «${note}»`);
+  }
+
+  /* ⚠ QURILMA XOTIRASI SAQLANISHI SHART. Chiqishda `localStorage.clear()`
+     bajariladi va `ek_lastLogin` ro'yxatga qo'shilmasa, monoblok
+     do'kon nomini ham, loginni ham UNUTARDI — ya'ni V98 imkoniyati
+     birinchi chiqishdayoq yo'qolardi. */
+  const kept = await page.evaluate(() => localStorage.getItem("ek_lastLogin"));
+  if (kept && kept.includes("kassir7")) ok("qurilma xotirasi saqlandi");
+  else fail(`qurilma xotirasi o'chib ketdi: ${kept}`);
+
+  const user = await page.$eval("#username", (el) => el.value).catch(() => "");
+  if (user === "kassir7") ok("login maydoni hali ham to'ldirilgan");
+  else fail(`login yo'qoldi: «${user}»`);
+
   await page.close();
 }
 

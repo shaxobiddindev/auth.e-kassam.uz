@@ -76,17 +76,27 @@ async function get(path, token) {
   return json;
 }
 
-// ── Logout bo'lganda localStorage tozalash va URL tozalash ──
+/* ── Chiqishda localStorage va URL tozalanadi ──────────────────────────
+   ⚠ `session_taken_over=1` ham SHU yo'ldan o'tadi (V97): sessiya
+   boshqa qurilmaga o'tganda ham bu qurilmadagi hamma narsa
+   tozalanishi kerak. Farqi faqat ekrandagi xabarda. */
 const _lp = new URLSearchParams(window.location.search);
-if (_lp.get("logged_out") === "1") {
-  // Qurilma identifikatori VA til tanlovi saqlanadi: ikkalasi ham sessiyaga
-  // emas, brauzerga tegishli. Tilni o'chirsak, chiqqan foydalanuvchi kirish
-  // ekranini yana o'zbekchada ko'rardi.
+const _takenOver = _lp.get("session_taken_over") === "1";
+if (_lp.get("logged_out") === "1" || _takenOver) {
+  /* Qurilma identifikatori, til tanlovi VA oxirgi kirish saqlanadi:
+     uchalasi ham sessiyaga emas, QURILMAGA tegishli.
+
+     ⚠ `ek_lastLogin` shu ro'yxatga qo'shilmasa, har chiqishda
+     qurilma xotirasi (V98) o'chib ketardi va monoblok yana do'kon
+     nomini ham, loginni ham unutardi — ya'ni butun imkoniyat
+     birinchi chiqishdayoq yo'qolardi. */
   const dev  = localStorage.getItem("ek_deviceId");
   const lang = localStorage.getItem("ek_lang");
+  const last = localStorage.getItem("ek_lastLogin");
   localStorage.clear();
   if (dev)  localStorage.setItem("ek_deviceId", dev);
   if (lang) localStorage.setItem("ek_lang", lang);
+  if (last) localStorage.setItem("ek_lastLogin", last);
   // `lang` parametri URL da qolsa `initLang` uni o'qib bo'lgan — endi tozalasa bo'ladi
   window.history.replaceState({}, "", window.location.pathname);
 }
@@ -139,6 +149,11 @@ export default function App() {
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
   const [notice, setNotice]     = useState("");  // muvaffaqiyat xabari (xato emas)
+  /* ⚠ SESSIYA BOSHQA QURILMAGA O'TDI (V97) — xato EMAS, sabab.
+     Qizil «xato» sifatida ko'rsatilsa, kassir o'zini aybdor his
+     qilardi va parolini qayta-qayta terib o'zini bloklab qo'yardi.
+     Bu esa oddiy xabar: nima bo'lgani va nima qilish kerakligi. */
+  const [takenOver, setTakenOver] = useState(_takenOver);
   const [shake, setShake]       = useState(0);   // har xatoda ortadi → bir martalik silkinish
   const [showPass, setShowPass] = useState(false);
   const [leaving, setLeaving]   = useState(false);
@@ -214,7 +229,12 @@ export default function App() {
     setTimeout(() => firstFieldRef.current?.focus(), 30);
   };
 
-  const set = (k) => (e) => { setError(""); setForm((p) => ({ ...p, [k]: e.target.value })); };
+  const set = (k) => (e) => {
+    setError("");
+    /* Yozishni boshladi — sababni o'qib bo'ldi, endi u xalaqit bermasin. */
+    setTakenOver(false);
+    setForm((p) => ({ ...p, [k]: e.target.value }));
+  };
 
   const fail = (msg) => { setError(msg); setShake((n) => n + 1); setLoading(false); };
 
@@ -876,6 +896,13 @@ export default function App() {
               <p id="auth-device-hint" className="auth__foot" style={{ marginTop: 6 }}>
                 {t("login.deviceHint")}
               </p>
+            </div>
+          )}
+
+          {takenOver && view === "login" && (
+            <div className="auth__note" role="status" aria-live="polite">
+              <i className="fa-solid fa-mobile-screen" aria-hidden="true" />
+              <span>{t("login.takenOver")}</span>
             </div>
           )}
 
