@@ -20,6 +20,7 @@
 
    Ishga tushirish:  node scripts/check-locales.mjs
    ══════════════════════════════════════════════════════════════════════════ */
+import { readFileSync } from "node:fs";
 import { usage, isLive, LOCALES } from "./locale-usage.mjs";
 
 const DICT = (await import(LOCALES)).default;
@@ -71,6 +72,32 @@ console.log("\n═══ 3. Uchala til mos ═══");
     }
   }
   if (!diff) ok(`uchala til ham ${uz.length} kalit`);
+}
+
+console.log("\n═══ 4. Takrorlangan kalit ═══");
+{
+  /* ⚠ NEGA MANBA MATNIDAN O'QILADI: yuqoridagi uchala bo'lim lug'atni
+     MODUL sifatida import qiladi, ya'ni JavaScript takror kalitlarni
+     allaqachon yig'ishtirib bo'lgan — ikkinchisi birinchisining ustiga
+     yozilgan va tekshiruvga faqat NATIJA ko'rinadi.
+
+     Takror kalit jimgina yo'qotadi: tarjimon yozgan matn ekranga
+     umuman chiqmaydi va buni faqat ekranga qarab payqash mumkin.
+     Ilovada (`app`) shu tekshiruv 15 ta, admin panelda 6 ta topdi. */
+  const text = readFileSync(LOCALES, "utf8");
+  const blocks = [...text.matchAll(/^const (uz|ru|en) = \{$/gm)];
+  const found = [];
+  for (let i = 0; i < blocks.length; i++) {
+    const to = i + 1 < blocks.length ? blocks[i + 1].index : text.length;
+    const seen = new Map();
+    for (const m of text.slice(blocks[i].index, to).matchAll(/^\s*"([\w.]+)"\s*:/gm)) {
+      seen.set(m[1], (seen.get(m[1]) || 0) + 1);
+    }
+    for (const [k, n] of seen) if (n > 1) found.push(`${blocks[i][1]}/${k}`);
+  }
+  found.length
+    ? no(`${found.length} ta kalit ikki marta yozilgan — oldingisi jimgina o'ladi`, found)
+    : ok("takrorlangan kalit yo'q");
 }
 
 console.log(bad ? `\n❌ Yozuvlar: ${bad} ta muammo\n` : "\n✅ Yozuvlar: hammasi joyida\n");
