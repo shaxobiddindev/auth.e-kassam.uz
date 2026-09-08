@@ -212,6 +212,43 @@ img.logo--dark { display: none; }
   font-size: var(--fs-xs); font-weight: 500; color: var(--fg-warning);
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   ESLAB QOLINGAN HISOB (V98)
+
+   ⚠ Kirish ekrani uchta maydon so'rardi: do'kon kodi, login, parol.
+   Birinchisi ortiqcha edi (login butun tizim bo'yicha noyob), ikkinchisi
+   esa monoblokda hech qachon o'zgarmaydi. Endi ikkalasi shu kartochkada
+   TURADI va kassir faqat parolini teradi.
+
+   ⚠ MAYDON EMAS, KARTOCHKA: bu o'zgartiriladigan qiymat emas, holat.
+   Input bo'lganda kassir uni tahrirlashga urinardi va «Boshqa hisob»
+   yo'li ko'rinmasdi. */
+.auth__known {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 13px; margin-bottom: 16px;
+  background: var(--bg-sunken); border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+}
+.auth__known-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.auth__known-who > i { color: var(--fg-brand); font-size: 16px; flex: 0 0 auto; }
+.auth__known-who > div { display: flex; flex-direction: column; min-width: 0; }
+.auth__known-who b {
+  font-size: var(--fs-sm); font-weight: 700; color: var(--fg-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.auth__known-who span {
+  font-size: var(--fs-xs); color: var(--fg-secondary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* ⚠ Bu havola qatorning ICHIDA — umumiy `.auth__link` esa butun
+   kenglikni va 44px balandlikni oladi. Shuning uchun shu yerda
+   qayta o'lchanadi, lekin bosish maydoni 44px dan past tushmaydi. */
+.auth__known .auth__link {
+  display: inline-flex; align-items: center; width: auto;
+  min-height: 44px; padding: 0 6px; margin: 0; flex: 0 0 auto;
+  font-size: var(--fs-xs); white-space: nowrap;
+}
+
 .auth__foot {
   margin-top: 22px; padding-top: 16px;
   border-top: 1px solid var(--border-subtle);

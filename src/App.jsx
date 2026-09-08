@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { API_BASE, APP_URL, ADMIN_URL, getDeviceId, LOGO_URL, LOGO_DARK_URL } from "./config";
+import { API_BASE, APP_URL, ADMIN_URL, getDeviceId, LOGO_URL, LOGO_DARK_URL,
+         readLastLogin, saveLastLogin, clearLastLogin } from "./config";
 import { t, getLang, useT } from "./lib/ek-i18n";
 import { asArray } from "./lib/ek-array";
 import ThemeSelect from "./components/ek/ThemeSelect";
@@ -163,13 +164,55 @@ export default function App() {
   const [stores, setStores]   = useState(null);
   const [pending, setPending] = useState(null);
 
+  /* ══ DO'KON KODI ENDI SO'RALMAYDI (V98) ═══════════════════════════
+     Login butun tizim bo'yicha noyob (`users_username_key`) va yangi
+     xodim yaratishda ham global tekshiriladi, ya'ni login o'zi
+     do'konni aniqlaydi. Maydonning yagona hissasi kassirdan uchinchi
+     qiymatni so'rash edi.
+
+     ⚠ MAYDON O'CHIRILMADI, YASHIRILDI. U ikki holatda kerak bo'ladi:
+     eski bazadagi faqat harfi bilan farq qiladigan loginlar
+     («Kassir» va «kassir» — ular ikki do'konda bo'lishi mumkin) va
+     qo'llab-quvvatlash. Havola HAMMAGA ko'rinib turadi, chunki
+     server bunday holatda ham «Login yoki parol noto'g'ri» deydi —
+     hisobning mavjudligini oshkor qilmaslik uchun. */
+  const [showShopCode, setShowShopCode] = useState(false);
+
+  /* Shu qurilmadagi oxirgi kirish — `{ shopCode, shopName, username }`.
+     ⚠ Parol saqlanmaydi va hech qachon saqlanmaydi. */
+  const [last, setLast] = useState(() => readLastLogin());
+
   const firstFieldRef = useRef(null);
+  const passRef       = useRef(null);
   const errorRef      = useRef(null);
   const codeRef       = useRef(null);
   const deviceRef     = useRef(null);
 
-  // Login maydoni avtomatik fokusda — kassir sichqonchaga tegmasin
-  useEffect(() => { firstFieldRef.current?.focus(); }, [tab]);
+  /* ⚠ ESLAB QOLINGAN LOGIN FORMAGA TUSHADI (V98) — bir marta, ochilishda.
+     Do'kon kodi TUSHMAYDI: u endi kerak emas va uni qayta yuborish
+     eski, o'zgargan kodni ushlab qolishi mumkin edi. */
+  useEffect(() => {
+    if (last?.username) setForm((p) => ({ ...p, username: last.username }));
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* Fokus: login allaqachon ma'lum bo'lsa PAROLGA — kassir
+     monoblokda faqat parolini teradi. */
+  useEffect(() => {
+    if (tab === "user" && view === "login" && last?.username && !showShopCode) {
+      passRef.current?.focus();
+    } else {
+      firstFieldRef.current?.focus();
+    }
+  }, [tab, view, last, showShopCode]);
+
+  /** «Boshqa hisob» — qurilma xotirasini tozalaydi. */
+  const forgetDevice = () => {
+    clearLastLogin();
+    setLast(null);
+    setError("");
+    setForm((p) => ({ ...p, username: "", password: "" }));
+    setTimeout(() => firstFieldRef.current?.focus(), 30);
+  };
 
   const set = (k) => (e) => { setError(""); setForm((p) => ({ ...p, [k]: e.target.value })); };
 
@@ -178,7 +221,8 @@ export default function App() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (tab === "user" && !form.shopCode.trim()) return fail(t("login.needShopCode"));
+    /* ⚠ DO'KON KODI TEKSHIRUVI OLIB TASHLANDI (V98) — u endi ixtiyoriy.
+       Login butun tizim bo'yicha noyob va do'konni o'zi aniqlaydi. */
     if (!form.username.trim())                   return fail(t("login.needUsername"));
     if (!form.password)                          return fail(t("login.needPassword"));
 
@@ -206,7 +250,12 @@ export default function App() {
       } else {
         const r1 = await post("/auth/login",
           {
-            shopCode: form.shopCode.trim(), username: form.username.trim(), password: form.password,
+            /* ⚠ BO'SH BO'LSA UMUMAN YUBORILMAYDI (`undefined`), bo'sh
+               satr emas: server bo'sh satrni ham «kod yo'q» deb
+               tushunadi, lekin niyat so'rovning o'zida ko'rinib
+               tursin — jurnalni o'qiydigan odam uchun ham. */
+            shopCode: form.shopCode.trim() || undefined,
+            username: form.username.trim(), password: form.password,
             // Yangi qurilma kodi — server 428 qaytargandan keyingi urinishda (V29)
             deviceCode: form.deviceCode.trim() || undefined,
           },
@@ -248,6 +297,16 @@ export default function App() {
           setLoading(false);
           return;
         }
+
+        /* ⚠ QURILMA ESLAB QOLADI (V98): keyingi safar ekranda
+           «Baraka Shop — kassir» turadi va faqat parol so'raladi.
+           Do'kon NOMI serverdan keladi (`shopName`) — kassir kodni
+           emas, nomni biladi. */
+        saveLastLogin({
+          shopCode: r1.data.shopCode || form.shopCode.trim(),
+          shopName: r1.data.shopName || "",
+          username: meta.username,
+        });
 
         setLeaving(true);
         redirectWithToken({
@@ -324,6 +383,7 @@ export default function App() {
         ...pending.meta,
         accessToken:  r2.data.accessToken,
         refreshToken: r2.data.refreshToken,
+        /* Filial tanlangan bo'lsa qurilma AYNAN o'shani eslaydi. */
         shopCode: r2.data.shopCode || s.code,
       });
     } catch (err) {
@@ -408,13 +468,16 @@ export default function App() {
     e.preventDefault();
     setError(""); setNotice("");
     if (!form.username.trim()) return fail(t("login.needUsername"));
-    if (tab === "user" && !form.shopCode.trim()) return fail(t("login.needShopCode"));
     setLoading(true);
     try {
       const r = await post("/auth/password/forgot", {
         accountType: tab === "admin" ? "ADMIN" : "USER",
         username: form.username.trim(),
-        shopCode: tab === "admin" ? null : form.shopCode.trim(),
+        /* ⚠ KIRISH BILAN BIR XIL QOIDA (V98): kod ixtiyoriy va bo'sh
+           bo'lsa yuborilmaydi. Ilgari bu yerda ham majburiy edi —
+           parolini unutgan odamdan do'kon kodini ham eslashni
+           so'rardik. */
+        shopCode: tab === "admin" ? undefined : (form.shopCode.trim() || undefined),
       }, { "X-Device-Id": getDeviceId() });
       setNotice(r.message || t("login.forgotSent"));
       setLoading(false);
@@ -690,17 +753,46 @@ export default function App() {
             </div>
           )}
 
-          {!isAdmin && view !== "reset" && (
+          {/* ⚠ ESLAB QOLINGAN DO'KON (V98). Monoblok bir yil bitta
+              do'konda tursa ham forma har safar bo'sh ochilardi —
+              kassir do'kon kodini, loginini va parolini qaytadan
+              terardi. Endi birinchi ikkitasi ekranda turadi. */}
+          {!isAdmin && view === "login" && last?.username && !showShopCode && (
+            <div className="auth__known">
+              <div className="auth__known-who">
+                <i className="fa-solid fa-store" aria-hidden="true" />
+                <div>
+                  {last.shopName && <b>{last.shopName}</b>}
+                  <span>{last.username}</span>
+                </div>
+              </div>
+              <button type="button" className="auth__link" onClick={forgetDevice}>
+                {t("login.otherAccount")}
+              </button>
+            </div>
+          )}
+
+          {/* ⚠ DO'KON KODI — YASHIRIN, LEKIN YO'QOLMAGAN (V98).
+              Login butun tizim bo'yicha noyob, ya'ni kod ortiqcha.
+              Havola HAMMAGA ko'rinadi: eski bazada faqat harfi bilan
+              farq qiladigan loginlar bo'lishi mumkin va bunday
+              hisobga kirishning yagona yo'li shu. Server esa
+              sababni aytmaydi — hisob mavjudligini oshkor
+              qilmaslik uchun. */}
+          {!isAdmin && view !== "reset" && showShopCode && (
             <div className="auth__field">
               <label className="auth__label" htmlFor="shopCode">{t("login.shopCode")}</label>
               <CodeField
-                id="shopCode" ref={firstFieldRef}
+                id="shopCode"
                 className="auth__input"
                 value={form.shopCode} onChange={set("shopCode")}
                 placeholder="baraka-shop" autoComplete="organization"
                 aria-invalid={!!error || undefined}
-                aria-describedby={error ? "auth-error" : undefined}
+                aria-describedby="auth-shopcode-hint"
               />
+              <p id="auth-shopcode-hint" className="auth__foot" style={{ marginTop: 6 }}>
+                {t("login.shopCodeHint")}
+              </p>
             </div>
           )}
 
@@ -709,7 +801,9 @@ export default function App() {
             <label className="auth__label" htmlFor="username">{t("login.login")}</label>
             <UsernameField
               id="username"
-              ref={isAdmin ? firstFieldRef : undefined}
+              /* ⚠ Fokus endi HAR DOIM shu yerda: do'kon kodi maydoni
+                 yashirilgach birinchi maydon aynan login bo'ldi. */
+              ref={firstFieldRef}
               className="auth__input"
               value={form.username} onChange={set("username")}
               placeholder="username" autoComplete="username"
@@ -726,7 +820,7 @@ export default function App() {
             </label>
             <div className="auth__input-wrap">
               <input
-                id="password"
+                id="password" ref={passRef}
                 className="auth__input auth__input--pass"
                 type={showPass ? "text" : "password"}
                 value={form.password} onChange={set("password")}
@@ -825,6 +919,20 @@ export default function App() {
               {t("login.forgotLink")}
             </button>
           )}
+          {/* ⚠ DO'KON KODI — CHIQISH YO'LI, ASOSIY YO'L EMAS (V98).
+              Kod endi so'ralmaydi, lekin eski bazada faqat harfi bilan
+              farq qiladigan loginlar bo'lishi mumkin («Kassir» va
+              «kassir» ikki do'konda) va bunday hisob kodsiz kira
+              olmaydi. Server sababni AYTMAYDI — hisob mavjudligini
+              oshkor qilmaslik uchun — shuning uchun yo'l ekranda
+              hammaga ochiq turishi kerak. */}
+          {!isAdmin && view !== "reset" && !showShopCode && (
+            <button type="button" className="auth__link" style={{ marginTop: 2 }}
+                    onClick={() => { setShowShopCode(true); setError(""); }}>
+              <i className="fa-solid fa-key" aria-hidden="true" /> {t("login.useShopCode")}
+            </button>
+          )}
+
           {/* Ro'yxatdan o'tish (V31) — faqat do'kon xodimi yorlig'ida:
               admin hisobini o'zi ochib bo'lmaydi. */}
           {view === "login" && !isAdmin && (

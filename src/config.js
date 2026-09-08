@@ -33,7 +33,45 @@ export const K = {
   role:     "ek_role",
   shopCode: "ek_shopCode",
   deviceId: "ek_deviceId",
+  /* ⚠ QURILMA XOTIRASI (V98) — kirish ekrani uchun.
+     Monoblok bir yil davomida bitta do'konda tursa ham forma har
+     safar bo'sh ochilardi. `{ shopCode, shopName, username }` shu
+     yerda saqlanadi va keyingi safar ekranda «Baraka Shop — kassir»
+     turadi, faqat PAROL so'raladi.
+
+     ⚠ PAROL SAQLANMAYDI va hech qachon saqlanmaydi. Bu xotira —
+     QULAYLIK, himoya emas: uni bilgan odam baribir parolsiz kira
+     olmaydi. */
+  lastLogin: "ek_lastLogin",
 };
+
+/**
+ * Oxirgi muvaffaqiyatli kirish — shu qurilmada.
+ *
+ * ⚠ `try/catch`: shaxsiy oynada yoki saqlash o'chirilgan brauzerda
+ * `localStorage` ning O'ZI istisno tashlaydi va kirish sahifasi
+ * umuman ochilmasdi.
+ */
+export function readLastLogin() {
+  try {
+    const raw = localStorage.getItem(K.lastLogin);
+    if (!raw) return null;
+    const v = JSON.parse(raw);
+    return v && typeof v === "object" && v.username ? v : null;
+  } catch (_) { return null; }
+}
+
+export function saveLastLogin(v) {
+  try {
+    if (v && v.username) localStorage.setItem(K.lastLogin, JSON.stringify({
+      shopCode: v.shopCode || "", shopName: v.shopName || "", username: v.username,
+    }));
+  } catch (_) { /* xotira yo'q — qulaylik yo'qoladi, kirish ishlayveradi */ }
+}
+
+export function clearLastLogin() {
+  try { localStorage.removeItem(K.lastLogin); } catch (_) { /* yuqoridagi sabab */ }
+}
 
 // ── Yordamchi funksiyalar ──────────────────────────────────────
 export function getDeviceId() {
