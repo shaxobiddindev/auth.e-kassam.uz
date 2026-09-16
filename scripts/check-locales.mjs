@@ -21,9 +21,17 @@
    Ishga tushirish:  node scripts/check-locales.mjs
    ══════════════════════════════════════════════════════════════════════════ */
 import { readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 import { usage, isLive, LOCALES } from "./locale-usage.mjs";
 
-const DICT = (await import(LOCALES)).default;
+/* ⚠ `pathToFileURL` SHART — WINDOWSDA QO'RIQCHI UMUMAN ISHLAMASDI.
+   `import("C:\\...\\uz.js")` da Node yo'lning boshini SXEMA deb
+   o'qiydi va `ERR_UNSUPPORTED_ESM_URL_SCHEME: Received protocol 'c:'`
+   bilan yiqiladi. Ya'ni `npm test` Windowsda oxirigacha yetmasdi va
+   undan keyingi hech bir tekshiruv bajarilmasdi — qo'riqchilar bor
+   edi-yu, ular ishlamasdi. Linux/CI da yo'l `/` bilan boshlangani
+   uchun xato ko'rinmagan. */
+const DICT = (await import(pathToFileURL(LOCALES).href)).default;
 const u = usage();
 let bad = 0;
 const ok = (m) => console.log("  ✅ " + m);

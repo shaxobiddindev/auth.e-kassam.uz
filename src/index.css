@@ -162,6 +162,28 @@ img.logo--dark { display: none; }
 .auth__input[aria-invalid="true"] { border-color: var(--border-danger); }
 .auth__input--pass { padding-right: 48px; font-family: var(--font-mono); letter-spacing: .04em; }
 
+/* ⚠ WEBVIEW2 NING O'Z «KO'Z» TUGMASI O'CHIRILADI — DESKTOPDA IKKITA
+   TOGGLE CHIQARDI.
+
+   Desktop ilova Tauri ustida ishlaydi, u esa Windowsda WebView2 dan
+   foydalanadi. Edge/WebView2 har `type="password"` maydoniga O'ZINING
+   «parolni ko'rsat» tugmasini (`::-ms-reveal`) qo'shadi. Bizning
+   `.auth__eye` tugmamiz bilan birga ular IKKITA ko'z bo'lib turardi.
+
+   ⚠ NEGA BRAUZERDA SEZILMAGAN: Chrome va Safari bunday tugma
+   qo'shmaydi — xato faqat desktop ilovada ko'rinardi.
+
+   ⚠ Qoida `app.e-kassam.uz` dagi bilan AYNAN BIR XIL bo'lishi kerak:
+   ikkala kirish ekrani ham bitta markupdan (`auth__input--pass` +
+   `auth__eye`) quriladi va biri tuzatilib, ikkinchisi unutilsa,
+   foydalanuvchi bitta ilovada ikki xil ekran ko'rardi. */
+/* ⚠ IKKI ALOHIDA QOIDA, bitta ro'yxat EMAS: CSS da ro'yxatdagi
+   BITTA yaroqsiz selektor BUTUN qoidani bekor qiladi. Ikkalasi ham
+   Edge'ga xos va biri kelajakda olib tashlansa, ikkinchisi ham
+   jimgina ishlamay qolardi. */
+.auth__input--pass::-ms-reveal { display: none; }
+.auth__input--pass::-ms-clear  { display: none; }
+
 .auth__eye {
   position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
   width: var(--hit-min); height: var(--hit-min);
