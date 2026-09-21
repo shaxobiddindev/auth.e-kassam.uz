@@ -44,6 +44,7 @@
 const uz = {
   /* ── Umumiy ─────────────────────────────────────────────────────────── */
   "validation.dateInvalid": "Bunday sana yo'q",
+  "validation.dateIncomplete": "Sana to'liq emas — kun, oy va yilni yozing",
   "common.checking": "Tekshirilmoqda…",
   "common.error": "Xatolik",
 
@@ -261,6 +262,7 @@ const uz = {
    ══════════════════════════════════════════════════════════════════════════ */
 const ru = {
   "validation.dateInvalid": "Такой даты не существует",
+  "validation.dateIncomplete": "Дата неполная — укажите день, месяц и год",
   "common.checking": "Проверка…",
   "common.error": "Ошибка",
 
@@ -462,6 +464,7 @@ const ru = {
    ══════════════════════════════════════════════════════════════════════════ */
 const en = {
   "validation.dateInvalid": "No such date",
+  "validation.dateIncomplete": "Incomplete date — enter day, month and year",
   "common.checking": "Checking…",
   "common.error": "Error",
 
