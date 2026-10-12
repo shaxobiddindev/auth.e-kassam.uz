@@ -4,6 +4,10 @@ import "./index.css";
 import App from "./App.jsx";
 import { initTheme } from "./lib/ek-theme";
 import { initLang } from "./lib/ek-i18n";
+import { installErrorReporting } from "./lib/ek-errors";
+
+/* Xato kuzatuvi — HAMMADAN OLDIN: ishga tushishdagi xato ham yetib borsin. */
+installErrorReporting();
 
 initTheme();
 

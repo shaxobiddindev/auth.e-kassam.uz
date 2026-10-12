@@ -72,7 +72,7 @@ async function get(path, token) {
     },
   });
   const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json.message || `${t("common.error")}: ${res.status}`);
+  if (!res.ok) throw Object.assign(new Error(json.message || `${t("common.error")}: ${res.status}`), { status: res.status });
   return json;
 }
 
