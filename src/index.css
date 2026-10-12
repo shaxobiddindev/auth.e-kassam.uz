@@ -312,7 +312,7 @@ img.logo--dark { display: none; }
 }
 [data-theme="dark"] .auth__brand-side {
   background: linear-gradient(160deg, var(--ek-blue-950), var(--ek-blue-800) 70%);
-  color: #FFFFFF;
+  color: var(--fg-on-brand);
   border-left-color: transparent;
 }
 @media (min-width: 900px) { .auth__brand-side { display: flex; } }
